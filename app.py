@@ -222,6 +222,7 @@ STM_GTFS_REALTIME_URL = "https://api.stm.info/pub/od/gtfs-rt/ic/v2/tripUpdates"
 BIXI_GBFS_URL = "https://gbfs.velobixi.com/gbfs/en/station_status.json"
 BIXI_STATION_INFO_URL = "https://gbfs.velobixi.com/gbfs/en/station_information.json"
 OPEN_METEO_URL = "https://api.open-meteo.com/v1/forecast"
+OPEN_METEO_AQI_URL = "https://air-quality-api.open-meteo.com/v1/air-quality"
 
 
 def fetch_stm_departures(stop_ids: List[str]) -> List[Dict]:
@@ -484,7 +485,7 @@ def fetch_weather(lat: float, lon: float) -> Dict:
 
 def fetch_aqi(lat: float, lon: float) -> Dict:
     """
-    Fetch air quality data from Open-Meteo API.
+    Fetch air quality data from Open-Meteo Air Quality API.
     Returns AQI object.
     """
     try:
@@ -492,15 +493,15 @@ def fetch_aqi(lat: float, lon: float) -> Dict:
         params = {
             'latitude': lat,
             'longitude': lon,
-            'current': 'air_quality',
+            'current': 'european_aqi,pm2_5,pm10',
             'timezone': 'America/Montreal'
         }
-        response = requests.get(OPEN_METEO_URL, params=params, timeout=10)
+        response = requests.get(OPEN_METEO_AQI_URL, params=params, timeout=10)
         response.raise_for_status()
         data = response.json()
         
         current = data.get('current', {})
-        aqi_value = current.get('air_quality', {}).get('european_aqi', 0)
+        aqi_value = current.get('european_aqi', 0)
         
         # Categorize AQI
         if aqi_value <= 50:
@@ -526,8 +527,8 @@ def fetch_aqi(lat: float, lon: float) -> Dict:
             'value': int(aqi_value),
             'category': category,
             'severity': severity,
-            'pm2_5': current.get('air_quality', {}).get('pm2_5', 0),
-            'pm10': current.get('air_quality', {}).get('pm10', 0)
+            'pm2_5': current.get('pm2_5', 0),
+            'pm10': current.get('pm10', 0)
         }
         
         logger.info(f"AQI fetched: {aqi_value} ({category})")
