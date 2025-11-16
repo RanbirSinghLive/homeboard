@@ -725,7 +725,7 @@ def manifest():
 if __name__ == '__main__':
     logger.info("Starting Home Departure Board API server")
     logger.info(f"Configuration: {CONFIG}")
-    # Use PORT from environment (required for Railway/Render) or default to 5001 for local
+    # Use PORT from environment (required for Render) or default to 5001 for local
     port = int(os.environ.get('PORT', 5001))
     # Disable debug mode in production (when PORT is set by hosting service)
     debug = os.environ.get('PORT') is None
