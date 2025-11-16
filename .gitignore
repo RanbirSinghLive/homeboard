@@ -37,4 +37,6 @@ config.yaml
 # GTFS cache
 .gtfs_cache.yaml
 
+# GitHub Pages build directory
+_site/
 
