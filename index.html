@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Home Departure Board</title>
+    <title>Home Board</title>
     <style>
         * {
             margin: 0;
@@ -84,9 +84,10 @@
         }
 
         .transit-item {
-            display: flex;
-            justify-content: space-between;
+            display: grid;
+            grid-template-columns: auto 1fr auto;
             align-items: center;
+            gap: 15px;
             padding: 12px;
             margin-bottom: 8px;
             background: #252525;
@@ -109,8 +110,7 @@
         }
 
         .transit-details {
-            flex: 1;
-            margin-left: 15px;
+            min-width: 0;
         }
 
         .transit-headsign {
@@ -295,7 +295,7 @@
 </head>
 <body>
     <div class="header">
-        <h1>🚌 Home Departure Board</h1>
+        <h1>🚌 Home Board</h1>
         <div class="header-right">
             <div class="current-time" id="currentTime">--:--:--</div>
             <div class="last-updated" id="lastUpdated">Loading...</div>
@@ -518,7 +518,7 @@
         }
 
         // Initialize
-        console.log('Initializing Home Departure Board');
+        console.log('Initializing Home Board');
         updateCurrentTime(); // Set initial time
         setInterval(updateCurrentTime, 1000); // Update every second
         loadDashboard();
