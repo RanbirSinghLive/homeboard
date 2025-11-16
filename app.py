@@ -372,22 +372,22 @@ def fetch_stm_departures(stop_ids: List[str]) -> List[Dict]:
                                         direction = None  # Don't show "Unknown"
                                 
                                 # Filter out route 57 South (Near Costco direction)
-                                # Check multiple ways to identify South direction
-                                is_route_57_south = False
+                                # Only allow route 57 North (Charlevoix, Georges-Vanier, Atwater)
                                 # Handle both string and int route_id
                                 route_id_str = str(route_id).strip()
                                 if route_id_str == '57':
-                                    if cardinal_direction == 'South':
-                                        is_route_57_south = True
-                                    elif direction and ('South' in str(direction) or 'south' in str(direction).lower()):
-                                        is_route_57_south = True
-                                    # Also check if direction contains "Costco" (legacy check)
-                                    elif direction and 'Costco' in str(direction):
-                                        is_route_57_south = True
-                                
-                                if is_route_57_south:
-                                    logger.info(f"Filtering out route 57 South: direction={direction}, cardinal={cardinal_direction}, route_id={route_id}")
-                                    continue
+                                    # Only allow if it's North direction with our custom terminus
+                                    is_allowed = False
+                                    if cardinal_direction == 'North' and direction == 'Charlevoix, Georges-Vanier, Atwater':
+                                        is_allowed = True
+                                    elif cardinal_direction == 'North':
+                                        # Even if custom mapping fails, allow North
+                                        is_allowed = True
+                                    
+                                    # Filter out everything else (South, Outbound, Inbound, etc.)
+                                    if not is_allowed:
+                                        logger.info(f"Filtering out route 57: direction={direction}, cardinal={cardinal_direction}, route_id={route_id}")
+                                        continue
                                 
                                 departures.append({
                                     'route_number': route_id,
