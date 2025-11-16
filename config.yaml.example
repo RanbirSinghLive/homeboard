@@ -1,0 +1,42 @@
+# Home Departure Board Configuration
+# Copy this file to config.yaml and fill in your values
+
+# Transit (STM) Configuration
+transit:
+  # STM API Key (get from https://portail.developpeurs.stm.info/apihub)
+  # After registering, go to "Authentication & Credentials" section to create an API key
+  api_key: ""  # Paste your STM API key here
+  
+  # List of STM stop IDs to monitor
+  # Find your stop IDs at: https://www.stm.info/en/info/networks/metro/bus
+  stop_ids:
+    - "52886"  # Example stop ID - replace with your actual stop IDs
+    - "52887"  # Add more stops as needed
+
+# BIXI Configuration
+bixi:
+  # List of BIXI station IDs to monitor
+  # Find station IDs from the BIXI app or website
+  station_ids:
+    - "486"  # Example station ID - replace with your actual station IDs
+    - "889"  # Add more stations as needed
+
+# Location Configuration
+# Used for weather, AQI, and sunrise/sunset calculations
+location:
+  lat: 45.2840  # Montreal latitude (default: downtown Montreal)
+  lon: -73.3328 # Montreal longitude (default: downtown Montreal)
+  # Update these to your home location
+
+# Leave-Now Indicator Configuration
+walking_time: 5  # Minutes to walk to transit stop
+buffer_time: 2   # Buffer time in minutes before departure
+
+# Refresh Configuration
+refresh_interval: 30  # Seconds between auto-refresh (front-end)
+
+# Units (optional - defaults to metric)
+units:
+  temperature: "celsius"  # celsius or fahrenheit
+  wind_speed: "kmh"       # kmh or mph
+
