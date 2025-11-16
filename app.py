@@ -402,10 +402,26 @@ def fetch_stm_departures(stop_ids: List[str]) -> List[Dict]:
         # Sort by arrival time
         departures.sort(key=lambda x: x['arrival_minutes'])
         
-        # Limit to next 10 departures per stop
-        departures = departures[:20]
+        # Limit to 2 departures per route+direction combination
+        route_direction_counts = {}  # Track count per route+direction
+        filtered_departures = []
         
-        logger.info(f"Found {len(departures)} departures for stops {stop_ids}")
+        for dep in departures:
+            route = dep.get('route_number', 'N/A')
+            direction = dep.get('direction', 'Unknown')
+            key = f"{route}_{direction}"
+            
+            # Count how many we've already added for this route+direction
+            count = route_direction_counts.get(key, 0)
+            
+            if count < 2:
+                filtered_departures.append(dep)
+                route_direction_counts[key] = count + 1
+        
+        # Limit total to 10 departures
+        departures = filtered_departures[:10]
+        
+        logger.info(f"Found {len(departures)} departures for stops {stop_ids} (limited to 2 per route+direction, max 10 total)")
         return departures
         
     except requests.exceptions.HTTPError as e:
