@@ -686,8 +686,10 @@ def index():
 if __name__ == '__main__':
     logger.info("Starting Home Departure Board API server")
     logger.info(f"Configuration: {CONFIG}")
-    # Use port 5001 to avoid conflict with AirPlay on macOS
+    # Use PORT from environment (required for Railway/Render) or default to 5001 for local
     port = int(os.environ.get('PORT', 5001))
-    logger.info(f"Server starting on http://0.0.0.0:{port}")
-    app.run(host='0.0.0.0', port=port, debug=True)
+    # Disable debug mode in production (when PORT is set by hosting service)
+    debug = os.environ.get('PORT') is None
+    logger.info(f"Server starting on http://0.0.0.0:{port} (debug={debug})")
+    app.run(host='0.0.0.0', port=port, debug=debug)
 
