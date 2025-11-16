@@ -372,7 +372,19 @@ def fetch_stm_departures(stop_ids: List[str]) -> List[Dict]:
                                         direction = None  # Don't show "Unknown"
                                 
                                 # Filter out route 57 South (Near Costco direction)
-                                if route_id == '57' and (cardinal_direction == 'South' or direction == 'South'):
+                                # Check multiple ways to identify South direction
+                                is_route_57_south = False
+                                if route_id == '57':
+                                    if cardinal_direction == 'South':
+                                        is_route_57_south = True
+                                    elif direction and ('South' in direction or 'south' in direction.lower()):
+                                        is_route_57_south = True
+                                    # Also check if direction contains "Costco" (legacy check)
+                                    elif direction and 'Costco' in direction:
+                                        is_route_57_south = True
+                                
+                                if is_route_57_south:
+                                    logger.debug(f"Filtering out route 57 South: direction={direction}, cardinal={cardinal_direction}")
                                     continue
                                 
                                 departures.append({
