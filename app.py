@@ -218,6 +218,7 @@ def translate_direction(headsign: str) -> str:
 
 # API endpoints
 STM_GTFS_REALTIME_URL = "https://api.stm.info/pub/od/gtfs-rt/ic/v2/tripUpdates"
+STM_GTFS_ALERTS_URL = "https://api.stm.info/pub/od/gtfs-rt/ic/v2/alerts"
 # BIXI GBFS API - using velobixi.com endpoint (working as of 2024)
 BIXI_GBFS_URL = "https://gbfs.velobixi.com/gbfs/en/station_status.json"
 BIXI_STATION_INFO_URL = "https://gbfs.velobixi.com/gbfs/en/station_information.json"
@@ -584,17 +585,127 @@ def calculate_sunrise_sunset(lat: float, lon: float) -> Dict:
 
 def fetch_alerts() -> List[Dict]:
     """
-    Fetch alerts from STM and weather sources.
-    Returns list of alert objects.
+    Fetch alerts from STM GTFS-Realtime alerts feed.
+    Returns list of alert objects with source, title, description, and severity.
     """
     alerts = []
     
-    # STM alerts (would need STM alerts API)
-    # For now, return empty or mock structure
-    logger.info("Fetching alerts (STM alerts API not implemented)")
+    try:
+        api_key = CONFIG.get('transit', {}).get('api_key', '')
+        
+        if not api_key:
+            logger.debug("STM API key not configured, skipping alerts")
+            return []
+        
+        if not GTFS_AVAILABLE:
+            logger.debug("GTFS-Realtime bindings not available, skipping alerts")
+            return []
+        
+        logger.info("Fetching STM alerts")
+        
+        # STM API requires API key in headers
+        headers = {
+            'apikey': api_key,
+            'Accept': 'application/x-protobuf'
+        }
+        
+        # Try to fetch alerts feed
+        try:
+            response = requests.get(STM_GTFS_ALERTS_URL, headers=headers, timeout=10)
+            response.raise_for_status()
+            
+            # Parse GTFS-Realtime protobuf feed
+            feed = gtfs_realtime_pb2.FeedMessage()
+            feed.ParseFromString(response.content)
+            
+            now = datetime.now()
+            
+            # Process each alert entity
+            for entity in feed.entity:
+                if entity.HasField('alert'):
+                    alert = entity.alert
+                    
+                    # Check if alert is currently active
+                    is_active = False
+                    for active_period in alert.active_period:
+                        start_time = active_period.start
+                        end_time = active_period.end
+                        
+                        # If no start time, assume it's active
+                        if start_time == 0:
+                            is_active = True
+                        else:
+                            start_dt = datetime.fromtimestamp(start_time)
+                            # If no end time, assume it's ongoing
+                            if end_time == 0:
+                                is_active = now >= start_dt
+                            else:
+                                end_dt = datetime.fromtimestamp(end_time)
+                                is_active = start_dt <= now <= end_dt
+                        
+                        if is_active:
+                            break
+                    
+                    # Only include active alerts
+                    if not is_active:
+                        continue
+                    
+                    # Extract alert text (prefer English, fallback to first available)
+                    header_text = ""
+                    description_text = ""
+                    
+                    if alert.header_text and alert.header_text.translation:
+                        for translation in alert.header_text.translation:
+                            if translation.language == 'en':
+                                header_text = translation.text
+                                break
+                        if not header_text and alert.header_text.translation:
+                            header_text = alert.header_text.translation[0].text
+                    
+                    if alert.description_text and alert.description_text.translation:
+                        for translation in alert.description_text.translation:
+                            if translation.language == 'en':
+                                description_text = translation.text
+                                break
+                        if not description_text and alert.description_text.translation:
+                            description_text = alert.description_text.translation[0].text
+                    
+                    # Determine severity based on effect
+                    severity = 'info'
+                    if alert.effect == gtfs_realtime_pb2.Alert.Effect.SIGNIFICANT_DELAYS:
+                        severity = 'warning'
+                    elif alert.effect == gtfs_realtime_pb2.Alert.Effect.DETOUR:
+                        severity = 'warning'
+                    elif alert.effect == gtfs_realtime_pb2.Alert.Effect.STOP_CLOSED:
+                        severity = 'critical'
+                    elif alert.effect == gtfs_realtime_pb2.Alert.Effect.NO_SERVICE:
+                        severity = 'critical'
+                    elif alert.effect == gtfs_realtime_pb2.Alert.Effect.REDUCED_SERVICE:
+                        severity = 'warning'
+                    
+                    # Build alert object
+                    alert_obj = {
+                        'source': 'STM',
+                        'title': header_text or 'Service Alert',
+                        'description': description_text,
+                        'severity': severity
+                    }
+                    
+                    alerts.append(alert_obj)
+            
+            logger.info(f"Found {len(alerts)} active STM alerts")
+            
+        except requests.exceptions.HTTPError as e:
+            # Alerts endpoint may not be available (returns 400)
+            if e.response.status_code == 400:
+                logger.debug("STM alerts endpoint not available (400 Bad Request)")
+            else:
+                logger.warning(f"Error fetching STM alerts: {e}")
+        except Exception as e:
+            logger.warning(f"Error parsing STM alerts: {e}")
     
-    # Weather alerts could come from Environment Canada
-    # For now, return empty list
+    except Exception as e:
+        logger.error(f"Error fetching alerts: {e}")
     
     return alerts
 
