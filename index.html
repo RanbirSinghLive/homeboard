@@ -427,7 +427,9 @@
         function formatMinutes(minutes) {
             if (minutes === null || minutes === undefined) return 'N/A';
             if (minutes < 1) return 'Now';
-            return `${Math.round(minutes)} min`;
+            // Use compact format on mobile
+            const isMobile = window.innerWidth <= 768;
+            return isMobile ? `${Math.round(minutes)}m` : `${Math.round(minutes)} min`;
         }
 
         // Get urgency class for transit item
