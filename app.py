@@ -199,7 +199,6 @@ CUSTOM_TERMINUS_MAP = {
         'South': "De L'Eglise"
     },
     '57': {
-        'South': 'Near Costco',
         'North': 'Charlevoix, Georges-Vanier, Atwater'
     }
 }
@@ -371,6 +370,10 @@ def fetch_stm_departures(stop_ids: List[str]) -> List[Dict]:
                                         direction = 'Inbound'
                                     else:
                                         direction = None  # Don't show "Unknown"
+                                
+                                # Filter out route 57 South (Near Costco direction)
+                                if route_id == '57' and (cardinal_direction == 'South' or direction == 'South'):
+                                    continue
                                 
                                 departures.append({
                                     'route_number': route_id,
