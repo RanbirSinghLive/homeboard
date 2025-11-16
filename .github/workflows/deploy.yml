@@ -28,25 +28,15 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v4
       
+      - name: Prepare static files
+        run: |
+          mkdir -p _site
+          cp index.html _site/
+      
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: '.'
-          exclude: |
-            **/.git
-            **/.github
-            **/venv
-            **/__pycache__
-            **/*.py
-            **/requirements.txt
-            **/config.yaml
-            **/.gtfs_cache.yaml
-            **/start.sh
-            **/*.md
-            **/.gitignore
-            **/test_*.py
-            **/find_*.py
-            **/debug_*.py
+          path: '_site'
       
       - name: Deploy to GitHub Pages
         id: deployment
