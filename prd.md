@@ -11,8 +11,7 @@ It consolidates:
 
 - Real-time transit departures (STM buses / Métro)
 - BIXI bike availability
-- Local weather (including air quality)
-- Sunrise/sunset time
+- Local weather (including air quality and sunrise/sunset)
 
 The board is a **lightweight client-side web app** powered by a **simple backend** that fetches data from public real-time feeds.
 
@@ -69,11 +68,8 @@ Provide all necessary “leave-the-house” information at a glance to minimize 
 - Precipitation probability
 - Humidity
 - Air Quality (AQI) - Current AQI value and category
+- Sunrise / Sunset times
 - Source: Open-Meteo
-
-### 5.4 Sunrise / Sunset
-- Today's sunrise time
-- Today's sunset time
 
 ## 6. System Architecture
 

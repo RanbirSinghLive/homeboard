@@ -423,6 +423,17 @@
                 `;
             }
 
+            // Sunrise/Sunset display
+            let sunDisplay = '';
+            if (weather.sunrise || weather.sunset) {
+                sunDisplay = `
+                    <div class="weather-detail">
+                        <div class="weather-detail-label">Sunrise / Sunset</div>
+                        <div class="weather-detail-value">${weather.sunrise || 'N/A'} / ${weather.sunset || 'N/A'}</div>
+                    </div>
+                `;
+            }
+
             return `
                 <div class="weather-main">
                     <div class="weather-temp">${Math.round(weather.temperature)}${weather.units?.temperature || '°C'}</div>
@@ -446,22 +457,7 @@
                         <div class="weather-detail-value">${weather.humidity || 0}%</div>
                     </div>
                     ${aqiDisplay}
-                </div>
-            `;
-        }
-
-        // Render sunrise/sunset
-        function renderSunriseSunset(times) {
-            return `
-                <div class="sunrise-sunset">
-                    <div class="sun-time">
-                        <div class="sun-time-label">Sunrise</div>
-                        <div class="sun-time-value">${times.sunrise || 'N/A'}</div>
-                    </div>
-                    <div class="sun-time">
-                        <div class="sun-time-label">Sunset</div>
-                        <div class="sun-time-value">${times.sunset || 'N/A'}</div>
-                    </div>
+                    ${sunDisplay}
                 </div>
             `;
         }
@@ -501,11 +497,6 @@
                     <div class="widget">
                         <div class="widget-title">Weather</div>
                         ${renderWeather(data.weather)}
-                    </div>
-
-                    <div class="widget">
-                        <div class="widget-title">Sunrise / Sunset</div>
-                        ${renderSunriseSunset(data.sunrise_sunset || {})}
                     </div>
                 `;
 

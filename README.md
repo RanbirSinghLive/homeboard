@@ -6,8 +6,7 @@ A wall-mounted or tablet-displayed web dashboard that shows everything needed to
 
 - **Real-time Transit Departures** - STM bus and metro departures
 - **BIXI Station Status** - Bike and dock availability
-- **Weather Overview** - Temperature, conditions, wind, precipitation, humidity, and air quality (AQI)
-- **Sunrise/Sunset Times** - Daily sunrise and sunset
+- **Weather Overview** - Temperature, conditions, wind, precipitation, humidity, air quality (AQI), and sunrise/sunset times
 
 ## Quick Start
 
