@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Home Board</title>
+    <title>Departure Board</title>
     <style>
         * {
             margin: 0;
@@ -300,7 +300,7 @@
 </head>
 <body>
     <div class="header">
-        <h1>🚌 Home Board</h1>
+        <h1>🚌 Departure Board</h1>
         <div class="header-right">
             <div class="current-time" id="currentTime">--:--:--</div>
             <div class="last-updated" id="lastUpdated">Loading...</div>
@@ -523,7 +523,7 @@
         }
 
         // Initialize
-        console.log('Initializing Home Board');
+        console.log('Initializing Departure Board');
         updateCurrentTime(); // Set initial time
         setInterval(updateCurrentTime, 1000); // Update every second
         loadDashboard();
