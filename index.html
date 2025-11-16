@@ -403,7 +403,11 @@
     </div>
 
     <script>
-        const API_BASE = window.location.origin;
+        // API base URL - defaults to same origin, but can be overridden
+        // For GitHub Pages, set this to your backend URL (e.g., 'https://your-backend.herokuapp.com')
+        // You can also set it via URL parameter: ?api=https://your-backend.com
+        const urlParams = new URLSearchParams(window.location.search);
+        const API_BASE = urlParams.get('api') || window.location.origin;
         const REFRESH_INTERVAL = 30000; // 30 seconds
 
         let refreshTimer = null;
