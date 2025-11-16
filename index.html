@@ -122,9 +122,33 @@
         }
 
         .transit-route {
-            font-size: 1.5rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 48px;
+            height: 48px;
+        }
+
+        .route-badge {
+            display: inline-block;
+            border-radius: 6px;
             font-weight: 700;
-            color: #00cc6a;
+            font-size: 1.5rem;
+            line-height: 1;
+            padding: 8px 12px;
+            box-sizing: border-box;
+        }
+
+        .route-badge.route-57,
+        .route-badge.route-71 {
+            background-color: #0066CC;
+            color: #ffffff;
+        }
+
+        .route-badge.route-107 {
+            background-color: #ffffff;
+            color: #6A1B9A;
+            border: 3px solid #6A1B9A;
         }
 
         .transit-details {
@@ -357,7 +381,13 @@
             }
 
             .transit-route {
+                min-width: 40px;
+                height: 40px;
+            }
+
+            .route-badge {
                 font-size: 1.2rem;
+                padding: 6px 10px;
             }
 
             .transit-stop {
@@ -468,6 +498,14 @@
             return isMobile ? `${Math.round(minutes)}m` : `${Math.round(minutes)} min`;
         }
 
+        // Generate styled route badge
+        function getRouteBadge(routeNumber) {
+            if (!routeNumber) return '<span class="route-badge">N/A</span>';
+            const route = String(routeNumber).trim();
+            const routeClass = `route-${route}`;
+            return `<span class="route-badge ${routeClass}">${route}</span>`;
+        }
+
         // Get urgency class for transit item
         function getUrgencyClass(minutes) {
             if (minutes <= 3) return 'very-soon';
@@ -486,7 +524,7 @@
                 const urgencyClass = getUrgencyClass(minutes);
                 return `
                     <li class="transit-item ${urgencyClass}">
-                        <div class="transit-route">${dep.route_number || 'N/A'}</div>
+                        <div class="transit-route">${getRouteBadge(dep.route_number)}</div>
                         <div class="transit-details">
                             ${dep.direction && dep.direction !== 'Unknown Direction' ? `<div class="transit-stop">${dep.direction}</div>` : ''}
                         </div>
