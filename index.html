@@ -401,7 +401,7 @@
 
         // Render weather
         function renderWeather(weather) {
-            if (!weather || !weather.temperature) {
+            if (!weather || weather.temperature === undefined || weather.temperature === null) {
                 return '<div class="error">Weather data unavailable</div>';
             }
 
