@@ -157,16 +157,16 @@ load_gtfs_trip_headsigns()
 # Custom terminus mappings by route and direction
 CUSTOM_TERMINUS_MAP = {
     '107': {
-        'West': 'Verdun Metro, Lasalle',
-        'East': 'Square Victora Metro'
+        'West': 'Verdun',
+        'East': 'Square Victoria'
     },
     '71': {
-        'North': 'Guy Concordia Metro',
-        'South': "De L'Eglise Metro"
+        'North': 'Guy Concordia',
+        'South': "De L'Eglise"
     },
     '57': {
         'South': 'Near Costco',
-        'North': 'Charevoix Metro, Georges-Vanier Metro, Atwater Metro'
+        'North': 'Charlevoix, Georges-Vanier, Atwater'
     }
 }
 
