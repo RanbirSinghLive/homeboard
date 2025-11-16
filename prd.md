@@ -14,7 +14,6 @@ It consolidates:
 - Local weather
 - Air quality (AQI)
 - Sunrise/sunset time
-- Alerts (STM disruptions, weather warnings)
 
 The board is a **lightweight client-side web app** powered by a **simple backend** that fetches data from public real-time feeds.
 
@@ -80,13 +79,6 @@ Provide all necessary “leave-the-house” information at a glance to minimize 
 - Today's sunrise time
 - Today's sunset time
 
-### 5.6 Alerts (STM + Weather)
-- Show STM service issues or weather alerts
-- Each includes:
-  - Source (STM/EC)
-  - Title
-  - Severity (`info`, `warning`, `critical`)
-
 ## 6. System Architecture
 
 ```
@@ -99,7 +91,6 @@ Provide all necessary “leave-the-house” information at a glance to minimize 
         +--> BIXI GBFS
         +--> Weather API
         +--> AQI API
-        +--> Alerts sources
 ```
 
 ### 6.1 Front-End
@@ -145,7 +136,7 @@ Front-End:
 
 Backend:
 - Python Flask  
-- Fetch and transform STM/BIXI/Weather/AQI/Alerts  
+- Fetch and transform STM/BIXI/Weather/AQI  
 
 ## 11. Future Enhancements
 

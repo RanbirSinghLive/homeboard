@@ -9,7 +9,6 @@ A wall-mounted or tablet-displayed web dashboard that shows everything needed to
 - **Weather Overview** - Temperature, conditions, wind, precipitation
 - **Air Quality (AQI)** - Current air quality index
 - **Sunrise/Sunset Times** - Daily sunrise and sunset
-- **Alerts** - STM service disruptions and weather warnings
 
 ## Quick Start
 
@@ -131,7 +130,6 @@ The backend provides the following endpoints:
 - `GET /api/weather` - Get weather data
 - `GET /api/aqi` - Get air quality data
 - `GET /api/sunrise-sunset` - Get sunrise/sunset times
-- `GET /api/alerts` - Get alerts
 - `GET /api/health` - Health check
 
 ## Troubleshooting
