@@ -154,6 +154,22 @@ def load_gtfs_trip_headsigns():
 # Load GTFS data on startup
 load_gtfs_trip_headsigns()
 
+# Custom terminus mappings by route and direction
+CUSTOM_TERMINUS_MAP = {
+    '107': {
+        'West': 'Verdun Metro, Lasalle',
+        'East': 'Square Victora Metro'
+    },
+    '71': {
+        'North': 'Guy Concordia Metro',
+        'South': "De L'Eglise Metro"
+    },
+    '57': {
+        'South': 'Near Costco',
+        'North': 'Charevoix Metro, Georges-Vanier Metro, Atwater Metro'
+    }
+}
+
 def translate_direction(headsign: str) -> str:
     """
     Translate French cardinal directions to English and extract terminus if available.
@@ -283,25 +299,35 @@ def fetch_stm_departures(stop_ids: List[str]) -> List[Dict]:
                                 # Get direction_id for fallback
                                 direction_id = trip_update.trip.direction_id if trip_update.trip.HasField('direction_id') else None
                                 
-                                # Get headsign and terminus from GTFS static data
+                                # Get headsign from GTFS static data
                                 headsign = GTFS_TRIP_HEADSIGNS.get(trip_id, None)
-                                terminus = GTFS_TRIP_TERMINUS.get(trip_id, None)
                                 
-                                # Prioritize: translated cardinal direction > meaningful terminus > generic terminus
+                                # Determine cardinal direction from headsign
+                                cardinal_direction = None
                                 if headsign:
                                     translated = translate_direction(headsign)
-                                    # If headsign translates to a cardinal direction (North, South, East, West), use it
-                                    if translated in ['North', 'South', 'East', 'West'] or translated.startswith(('North ', 'South ', 'East ', 'West ')):
-                                        direction = translated
-                                    # Otherwise, use terminus if it's a meaningful station name
-                                    elif terminus and 'Station' in terminus:
-                                        direction = terminus
-                                    # Fallback to translated headsign (might have "via" info)
+                                    # Extract cardinal direction if available
+                                    if translated in ['North', 'South', 'East', 'West']:
+                                        cardinal_direction = translated
+                                    elif translated.startswith('North '):
+                                        cardinal_direction = 'North'
+                                    elif translated.startswith('South '):
+                                        cardinal_direction = 'South'
+                                    elif translated.startswith('East '):
+                                        cardinal_direction = 'East'
+                                    elif translated.startswith('West '):
+                                        cardinal_direction = 'West'
+                                
+                                # Use custom terminus mapping if available
+                                if route_id in CUSTOM_TERMINUS_MAP and cardinal_direction:
+                                    if cardinal_direction in CUSTOM_TERMINUS_MAP[route_id]:
+                                        direction = CUSTOM_TERMINUS_MAP[route_id][cardinal_direction]
                                     else:
-                                        direction = translated
-                                elif terminus:
-                                    # Use terminus if no headsign available
-                                    direction = terminus
+                                        # Fallback to cardinal direction if no custom mapping
+                                        direction = cardinal_direction
+                                elif cardinal_direction:
+                                    # Use cardinal direction if no custom mapping
+                                    direction = cardinal_direction
                                 else:
                                     # Final fallback to direction_id
                                     if direction_id == 0:
