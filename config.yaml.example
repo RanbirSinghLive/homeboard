@@ -28,10 +28,6 @@ location:
   lon: -73.3328 # Montreal longitude (default: downtown Montreal)
   # Update these to your home location
 
-# Leave-Now Indicator Configuration
-walking_time: 5  # Minutes to walk to transit stop
-buffer_time: 2   # Buffer time in minutes before departure
-
 # Refresh Configuration
 refresh_interval: 30  # Seconds between auto-refresh (front-end)
 

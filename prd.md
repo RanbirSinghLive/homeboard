@@ -15,7 +15,6 @@ It consolidates:
 - Air quality (AQI)
 - Sunrise/sunset time
 - Alerts (STM disruptions, weather warnings)
-- A “Leave-Now” indicator based on walking time to the stop
 
 The board is a **lightweight client-side web app** powered by a **simple backend** that fetches data from public real-time feeds.
 
@@ -78,17 +77,10 @@ Provide all necessary “leave-the-house” information at a glance to minimize 
 - Source: Open-Meteo or Canadian AQHI
 
 ### 5.5 Sunrise / Sunset
-- Today’s sunrise time
-- Today’s sunset time
+- Today's sunrise time
+- Today's sunset time
 
-### 5.6 Leave-Now Indicator
-A dynamic indicator using:
-- Soonest upcoming departure
-- User-configured walking time (minutes)
-- User-configured buffer time  
-- Output: “Leave now” or “Leave in X minutes”  
-
-### 5.7 Alerts (STM + Weather)
+### 5.6 Alerts (STM + Weather)
 - Show STM service issues or weather alerts
 - Each includes:
   - Source (STM/EC)
@@ -132,8 +124,6 @@ A dynamic indicator using:
 Editable values:
 - Transit stop IDs  
 - BIXI station IDs  
-- Walking time  
-- Buffer time  
 - API URLs  
 - Refresh interval  
 - Units  

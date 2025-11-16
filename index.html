@@ -65,47 +65,6 @@
             letter-spacing: 1px;
         }
 
-        .leave-now-widget {
-            grid-column: 1 / -1;
-            background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
-            border: 3px solid #00ff88;
-        }
-
-        .leave-now-widget.urgent {
-            border-color: #ff4444;
-            background: linear-gradient(135deg, #2a1a1a 0%, #3a2a2a 100%);
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.8; }
-        }
-
-        .leave-now-content {
-            text-align: center;
-            padding: 20px;
-        }
-
-        .leave-now-message {
-            font-size: 3rem;
-            font-weight: 700;
-            margin-bottom: 10px;
-        }
-
-        .leave-now-message.leave-now {
-            color: #ff4444;
-        }
-
-        .leave-now-message.leave-soon {
-            color: #ffaa00;
-        }
-
-        .leave-now-details {
-            font-size: 1.2rem;
-            color: #aaa;
-        }
-
         .transit-list {
             list-style: none;
         }
@@ -148,7 +107,8 @@
 
         .transit-stop {
             font-size: 0.9rem;
-            color: #888;
+            color: #aaa;
+            font-weight: 500;
         }
 
         .transit-time {
@@ -362,9 +322,6 @@
                 grid-template-columns: 1fr;
             }
 
-            .leave-now-message {
-                font-size: 2rem;
-            }
 
             .weather-temp {
                 font-size: 2rem;
@@ -415,8 +372,7 @@
                     <li class="transit-item ${urgencyClass}">
                         <div class="transit-route">${dep.route_number || 'N/A'}</div>
                         <div class="transit-details">
-                            <div class="transit-headsign">${dep.headsign || 'Unknown'}</div>
-                            <div class="transit-stop">${dep.stop_name || ''} (${dep.stop_code || ''})</div>
+                            ${dep.direction && dep.direction !== 'Unknown Direction' ? `<div class="transit-stop">${dep.direction}</div>` : ''}
                         </div>
                         <div class="transit-time">${formatMinutes(minutes)}</div>
                     </li>
@@ -465,7 +421,7 @@
             return `
                 <div class="weather-main">
                     <div class="weather-temp">${Math.round(weather.temperature)}${weather.units?.temperature || '°C'}</div>
-                    <div class="weather-condition">${weather.condition || 'Unknown'}</div>
+                    ${weather.condition && weather.condition !== 'Unknown' ? `<div class="weather-condition">${weather.condition}</div>` : ''}
                 </div>
                 <div class="weather-details">
                     <div class="weather-detail">
@@ -501,7 +457,7 @@
             return `
                 <div class="aqi-display">
                     <div class="aqi-value ${aqiClass}">${aqi.value}</div>
-                    <div class="aqi-category">${aqi.category || 'Unknown'}</div>
+                    ${aqi.category && aqi.category !== 'Unknown' ? `<div class="aqi-category">${aqi.category}</div>` : ''}
                 </div>
             `;
         }
@@ -540,32 +496,6 @@
             return `<ul class="alerts-list">${items}</ul>`;
         }
 
-        // Render leave-now indicator
-        function renderLeaveNow(leaveNow) {
-            if (!leaveNow) {
-                return '<div class="error">Leave-now data unavailable</div>';
-            }
-
-            const status = leaveNow.status || 'unknown';
-            const message = leaveNow.message || 'Unknown';
-            const isUrgent = status === 'leave_now';
-
-            let messageClass = '';
-            if (status === 'leave_now') messageClass = 'leave-now';
-            else if (status === 'leave_soon') messageClass = 'leave-soon';
-
-            const details = leaveNow.departure_in_minutes !== undefined
-                ? `Next departure in ${formatMinutes(leaveNow.departure_in_minutes)}`
-                : '';
-
-            return `
-                <div class="leave-now-content">
-                    <div class="leave-now-message ${messageClass}">${message}</div>
-                    <div class="leave-now-details">${details}</div>
-                </div>
-            `;
-        }
-
         // Fetch and render dashboard
         async function loadDashboard() {
             try {
@@ -588,11 +518,6 @@
 
                 // Render all widgets
                 dashboard.innerHTML = `
-                    <div class="widget leave-now-widget ${data.leave_now?.status === 'leave_now' ? 'urgent' : ''}">
-                        <div class="widget-title">Leave Now Indicator</div>
-                        ${renderLeaveNow(data.leave_now)}
-                    </div>
-
                     <div class="widget">
                         <div class="widget-title">Transit Departures</div>
                         ${renderTransit(data.transit?.departures || [])}

@@ -107,5 +107,4 @@ You can test individual endpoints:
 
 - Configure your transit stops and BIXI stations in `config.yaml`
 - Set your home location for accurate weather/AQI
-- Adjust walking time and buffer time for the leave-now indicator
 

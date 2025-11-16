@@ -11,6 +11,9 @@ from flask import Flask, jsonify, send_from_directory
 from flask_cors import CORS
 import requests
 from typing import Dict, List, Optional
+import zipfile
+import io
+import csv
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -42,12 +45,160 @@ def load_config():
             'transit': {'stop_ids': []},
             'bixi': {'station_ids': []},
             'location': {'lat': 45.5017, 'lon': -73.5673},  # Montreal default
-            'walking_time': 5,
-            'buffer_time': 2,
             'refresh_interval': 30
         }
 
 CONFIG = load_config()
+
+# GTFS Static data cache
+GTFS_TRIP_HEADSIGNS = {}
+GTFS_TRIP_TERMINUS = {}  # Map trip_id to terminus stop name
+GTFS_STATIC_URL = "https://www.stm.info/sites/default/files/gtfs/gtfs_stm.zip"
+GTFS_CACHE_FILE = os.path.join(os.path.dirname(__file__), '.gtfs_cache.yaml')
+
+def load_gtfs_trip_headsigns():
+    """
+    Load trip_headsign mappings and terminus stops from GTFS static data.
+    Caches the data to avoid re-downloading on every request.
+    """
+    global GTFS_TRIP_HEADSIGNS, GTFS_TRIP_TERMINUS
+    
+    # Check if we have a cached version
+    if os.path.exists(GTFS_CACHE_FILE):
+        try:
+            with open(GTFS_CACHE_FILE, 'r') as f:
+                cache_data = yaml.safe_load(f)
+                cache_time = datetime.fromisoformat(cache_data.get('timestamp', '2000-01-01'))
+                # Use cache if it's less than 7 days old
+                if (datetime.now() - cache_time).days < 7:
+                    GTFS_TRIP_HEADSIGNS = cache_data.get('trip_headsigns', {})
+                    GTFS_TRIP_TERMINUS = cache_data.get('trip_terminus', {})
+                    logger.info(f"Loaded {len(GTFS_TRIP_HEADSIGNS)} trip headsigns and {len(GTFS_TRIP_TERMINUS)} terminus stops from cache")
+                    return
+        except Exception as e:
+            logger.warning(f"Error loading GTFS cache: {e}")
+    
+    # Download and parse GTFS static data
+    try:
+        logger.info("Downloading GTFS static data for trip headsigns and terminus stops...")
+        response = requests.get(GTFS_STATIC_URL, timeout=30)
+        response.raise_for_status()
+        
+        # Extract data from ZIP
+        with zipfile.ZipFile(io.BytesIO(response.content)) as zip_file:
+            # Load stop names first
+            stop_names = {}
+            if 'stops.txt' in zip_file.namelist():
+                with zip_file.open('stops.txt') as stops_file:
+                    reader = csv.DictReader(io.TextIOWrapper(stops_file, encoding='utf-8'))
+                    for row in reader:
+                        stop_id = row.get('stop_id', '')
+                        stop_name = row.get('stop_name', '')
+                        if stop_id and stop_name:
+                            stop_names[stop_id] = stop_name
+            
+            # Load trip headsigns
+            if 'trips.txt' in zip_file.namelist():
+                with zip_file.open('trips.txt') as trips_file:
+                    reader = csv.DictReader(io.TextIOWrapper(trips_file, encoding='utf-8'))
+                    for row in reader:
+                        trip_id = row.get('trip_id', '')
+                        trip_headsign = row.get('trip_headsign', '')
+                        if trip_id and trip_headsign:
+                            GTFS_TRIP_HEADSIGNS[trip_id] = trip_headsign
+            
+            # Load terminus stops (last stop in each trip's stop sequence)
+            if 'stop_times.txt' in zip_file.namelist():
+                with zip_file.open('stop_times.txt') as stop_times_file:
+                    reader = csv.DictReader(io.TextIOWrapper(stop_times_file, encoding='utf-8'))
+                    current_trip = None
+                    last_stop_id = None
+                    
+                    for row in reader:
+                        trip_id = row.get('trip_id', '')
+                        stop_id = row.get('stop_id', '')
+                        
+                        if trip_id != current_trip:
+                            # Save previous trip's terminus
+                            if current_trip and last_stop_id:
+                                terminus_name = stop_names.get(last_stop_id, last_stop_id)
+                                GTFS_TRIP_TERMINUS[current_trip] = terminus_name
+                            current_trip = trip_id
+                            last_stop_id = stop_id
+                        else:
+                            last_stop_id = stop_id  # Update to last stop in sequence
+                    
+                    # Don't forget the last trip
+                    if current_trip and last_stop_id:
+                        terminus_name = stop_names.get(last_stop_id, last_stop_id)
+                        GTFS_TRIP_TERMINUS[current_trip] = terminus_name
+                
+                logger.info(f"Loaded {len(GTFS_TRIP_HEADSIGNS)} trip headsigns and {len(GTFS_TRIP_TERMINUS)} terminus stops from GTFS static data")
+                
+                # Cache the data
+                try:
+                    with open(GTFS_CACHE_FILE, 'w') as f:
+                        yaml.dump({
+                            'timestamp': datetime.now().isoformat(),
+                            'trip_headsigns': GTFS_TRIP_HEADSIGNS,
+                            'trip_terminus': GTFS_TRIP_TERMINUS
+                        }, f, default_flow_style=False, allow_unicode=True)
+                except Exception as e:
+                    logger.warning(f"Could not cache GTFS data: {e}")
+            else:
+                logger.error("Required GTFS files not found in ZIP")
+    except Exception as e:
+        logger.error(f"Error loading GTFS static data: {e}")
+        logger.warning("Falling back to direction_id (Outbound/Inbound)")
+
+# Load GTFS data on startup
+load_gtfs_trip_headsigns()
+
+def translate_direction(headsign: str) -> str:
+    """
+    Translate French cardinal directions to English and extract terminus if available.
+    Returns translated direction or terminus name.
+    """
+    if not headsign:
+        return headsign
+    
+    # Extract terminus if it contains "destination" or "Station"
+    if 'destination' in headsign.lower():
+        # Extract text after "destination"
+        parts = headsign.split('destination', 1)
+        if len(parts) > 1:
+            terminus = parts[1].strip()
+            return terminus
+    
+    if 'Station' in headsign:
+        # Extract station name
+        if 'Station ' in headsign:
+            station = headsign.split('Station ', 1)[1].split()[0]  # Get first word after "Station"
+            return f'Station {station}'
+    
+    # Translate French cardinal directions to English
+    translation_map = {
+        'Nord': 'North',
+        'Sud': 'South',
+        'Est': 'East',
+        'Ouest': 'West',
+        'Nord via': 'North via',
+        'Sud via': 'South via',
+        'Est via': 'East via',
+        'Ouest via': 'West via',
+    }
+    
+    # Check for exact matches first
+    if headsign in translation_map:
+        return translation_map[headsign]
+    
+    # Check for starts with patterns
+    for french, english in translation_map.items():
+        if headsign.startswith(french):
+            return headsign.replace(french, english, 1)
+    
+    # Return original if no translation needed
+    return headsign
 
 # API endpoints
 STM_GTFS_REALTIME_URL = "https://api.stm.info/pub/od/gtfs-rt/ic/v2/tripUpdates"
@@ -129,17 +280,41 @@ def fetch_stm_departures(stop_ids: List[str]) -> List[Dict]:
                                 # Get trip ID for reference
                                 trip_id = trip_update.trip.trip_id if trip_update.trip.HasField('trip_id') else ''
                                 
-                                # Try to get stop name from stop_time_update if available
-                                stop_name = f'Stop {stop_id}'
-                                if stop_time_update.HasField('stop_id'):
-                                    # Could enhance with GTFS static data lookup
-                                    pass
+                                # Get direction_id for fallback
+                                direction_id = trip_update.trip.direction_id if trip_update.trip.HasField('direction_id') else None
+                                
+                                # Get headsign and terminus from GTFS static data
+                                headsign = GTFS_TRIP_HEADSIGNS.get(trip_id, None)
+                                terminus = GTFS_TRIP_TERMINUS.get(trip_id, None)
+                                
+                                # Prioritize: translated cardinal direction > meaningful terminus > generic terminus
+                                if headsign:
+                                    translated = translate_direction(headsign)
+                                    # If headsign translates to a cardinal direction (North, South, East, West), use it
+                                    if translated in ['North', 'South', 'East', 'West'] or translated.startswith(('North ', 'South ', 'East ', 'West ')):
+                                        direction = translated
+                                    # Otherwise, use terminus if it's a meaningful station name
+                                    elif terminus and 'Station' in terminus:
+                                        direction = terminus
+                                    # Fallback to translated headsign (might have "via" info)
+                                    else:
+                                        direction = translated
+                                elif terminus:
+                                    # Use terminus if no headsign available
+                                    direction = terminus
+                                else:
+                                    # Final fallback to direction_id
+                                    if direction_id == 0:
+                                        direction = 'Outbound'
+                                    elif direction_id == 1:
+                                        direction = 'Inbound'
+                                    else:
+                                        direction = None  # Don't show "Unknown"
                                 
                                 departures.append({
                                     'route_number': route_id,
-                                    'headsign': f'Route {route_id}',  # Simplified - would need GTFS static data for actual headsign
-                                    'stop_code': stop_id,
-                                    'stop_name': stop_name,
+                                    'direction': direction,
+                                    'direction_id': direction_id,
                                     'arrival_minutes': minutes_until,
                                     'arrival_time': arrival_dt.strftime('%H:%M'),
                                     'scheduled_time': arrival_dt.isoformat(),
@@ -397,49 +572,6 @@ def fetch_alerts() -> List[Dict]:
     return alerts
 
 
-def calculate_leave_now(departures: List[Dict], walking_time: int, buffer_time: int) -> Dict:
-    """
-    Calculate leave-now indicator based on soonest departure.
-    Returns dict with leave status and message.
-    """
-    try:
-        if not departures:
-            return {
-                'status': 'no_departures',
-                'message': 'No departures available',
-                'leave_in_minutes': None
-            }
-        
-        # Find soonest departure (simplified - assumes departures have 'arrival_minutes' field)
-        soonest = min(departures, key=lambda d: d.get('arrival_minutes', 999))
-        arrival_minutes = soonest.get('arrival_minutes', 0)
-        
-        total_time_needed = walking_time + buffer_time
-        leave_in = arrival_minutes - total_time_needed
-        
-        if leave_in <= 0:
-            return {
-                'status': 'leave_now',
-                'message': 'Leave now!',
-                'leave_in_minutes': 0,
-                'departure_in_minutes': arrival_minutes
-            }
-        else:
-            return {
-                'status': 'leave_soon',
-                'message': f'Leave in {leave_in} minutes',
-                'leave_in_minutes': leave_in,
-                'departure_in_minutes': arrival_minutes
-            }
-    except Exception as e:
-        logger.error(f"Error calculating leave-now: {e}")
-        return {
-            'status': 'error',
-            'message': 'Unable to calculate',
-            'leave_in_minutes': None
-        }
-
-
 @app.route('/api/transit', methods=['GET'])
 def get_transit():
     """Get STM transit departures"""
@@ -499,18 +631,6 @@ def get_alerts():
     return jsonify({'alerts': alerts})
 
 
-@app.route('/api/leave-now', methods=['GET'])
-def get_leave_now():
-    """Get leave-now indicator"""
-    logger.info("GET /api/leave-now")
-    stop_ids = CONFIG.get('transit', {}).get('stop_ids', [])
-    departures = fetch_stm_departures(stop_ids)
-    walking_time = CONFIG.get('walking_time', 5)
-    buffer_time = CONFIG.get('buffer_time', 2)
-    leave_now = calculate_leave_now(departures, walking_time, buffer_time)
-    return jsonify(leave_now)
-
-
 @app.route('/api/dashboard', methods=['GET'])
 def get_dashboard():
     """Get all dashboard data in one request"""
@@ -521,8 +641,6 @@ def get_dashboard():
     lon = location.get('lon', -73.5673)
     stop_ids = CONFIG.get('transit', {}).get('stop_ids', [])
     station_ids = CONFIG.get('bixi', {}).get('station_ids', [])
-    walking_time = CONFIG.get('walking_time', 5)
-    buffer_time = CONFIG.get('buffer_time', 2)
     
     # Fetch all data
     departures = fetch_stm_departures(stop_ids)
@@ -531,7 +649,6 @@ def get_dashboard():
     aqi = fetch_aqi(lat, lon)
     sunrise_sunset = calculate_sunrise_sunset(lat, lon)
     alerts = fetch_alerts()
-    leave_now = calculate_leave_now(departures, walking_time, buffer_time)
     
     dashboard_data = {
         'transit': {'departures': departures},
@@ -540,7 +657,6 @@ def get_dashboard():
         'aqi': aqi,
         'sunrise_sunset': sunrise_sunset,
         'alerts': alerts,
-        'leave_now': leave_now,
         'last_updated': datetime.now().isoformat()
     }
     

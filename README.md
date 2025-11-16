@@ -9,7 +9,6 @@ A wall-mounted or tablet-displayed web dashboard that shows everything needed to
 - **Weather Overview** - Temperature, conditions, wind, precipitation
 - **Air Quality (AQI)** - Current air quality index
 - **Sunrise/Sunset Times** - Daily sunrise and sunset
-- **Leave-Now Indicator** - Dynamic indicator based on walking time and next departure
 - **Alerts** - STM service disruptions and weather warnings
 
 ## Quick Start
@@ -35,7 +34,6 @@ A wall-mounted or tablet-displayed web dashboard that shows everything needed to
    - Add your STM stop IDs
    - Add your BIXI station IDs
    - Set your location (latitude/longitude)
-   - Adjust walking time and buffer time
 
 4. **Start the backend server:**
    
@@ -76,9 +74,6 @@ Set your home location for weather and AQI:
 - Use Google Maps to find your latitude/longitude
 - Default is set to downtown Montreal (45.5017, -73.5673)
 
-### Walking Time & Buffer
-- `walking_time`: Minutes to walk to your transit stop
-- `buffer_time`: Extra buffer time before departure
 
 ## Running on Hardware
 
@@ -137,7 +132,6 @@ The backend provides the following endpoints:
 - `GET /api/aqi` - Get air quality data
 - `GET /api/sunrise-sunset` - Get sunrise/sunset times
 - `GET /api/alerts` - Get alerts
-- `GET /api/leave-now` - Get leave-now indicator
 - `GET /api/health` - Health check
 
 ## Troubleshooting

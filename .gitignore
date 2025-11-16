@@ -34,3 +34,6 @@ Thumbs.db
 # Configuration with sensitive data
 config.yaml
 
+# GTFS cache
+.gtfs_cache.yaml
+
