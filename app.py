@@ -32,21 +32,55 @@ CORS(app)
 
 # Load configuration
 def load_config():
-    """Load configuration from config.yaml"""
+    """Load configuration from config.yaml or environment variables"""
     config_path = os.path.join(os.path.dirname(__file__), 'config.yaml')
+    config = {}
+    
+    # Try to load from config.yaml if it exists
     try:
         with open(config_path, 'r') as f:
-            config = yaml.safe_load(f)
+            config = yaml.safe_load(f) or {}
             logger.info(f"Configuration loaded from {config_path}")
-            return config
     except FileNotFoundError:
-        logger.warning(f"Config file not found at {config_path}, using defaults")
-        return {
-            'transit': {'stop_ids': []},
-            'bixi': {'station_ids': []},
-            'location': {'lat': 45.5017, 'lon': -73.5673},  # Montreal default
-            'refresh_interval': 30
-        }
+        logger.warning(f"config.yaml not found at {config_path}, using environment variables and defaults")
+    
+    # Override with environment variables if set (for cloud deployment)
+    if 'STM_API_KEY' in os.environ:
+        if 'transit' not in config:
+            config['transit'] = {}
+        config['transit']['api_key'] = os.environ['STM_API_KEY']
+    
+    if 'LATITUDE' in os.environ:
+        if 'location' not in config:
+            config['location'] = {}
+        config['location']['lat'] = float(os.environ['LATITUDE'])
+    
+    if 'LONGITUDE' in os.environ:
+        if 'location' not in config:
+            config['location'] = {}
+        config['location']['lon'] = float(os.environ['LONGITUDE'])
+    
+    if 'STOP_IDS' in os.environ:
+        if 'transit' not in config:
+            config['transit'] = {}
+        config['transit']['stop_ids'] = [s.strip() for s in os.environ['STOP_IDS'].split(',')]
+    
+    if 'BIXI_STATION_IDS' in os.environ:
+        if 'bixi' not in config:
+            config['bixi'] = {}
+        config['bixi']['station_ids'] = [s.strip() for s in os.environ['BIXI_STATION_IDS'].split(',')]
+    
+    # Set defaults if missing
+    if 'transit' not in config:
+        config['transit'] = {'stop_ids': []}
+    if 'bixi' not in config:
+        config['bixi'] = {'station_ids': []}
+    if 'location' not in config:
+        config['location'] = {'lat': 45.5017, 'lon': -73.5673}  # Montreal default
+    if 'refresh_interval' not in config:
+        config['refresh_interval'] = 30
+    
+    return config
 
 CONFIG = load_config()
 
