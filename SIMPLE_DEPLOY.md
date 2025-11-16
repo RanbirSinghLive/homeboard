@@ -121,5 +121,5 @@ Render is the best balance of:
 
 Your app will be live at: `https://your-app-name.onrender.com`
 
-**No need for GitHub Pages + separate backend!** Everything runs together. 🎉
+Everything runs together on one service! 🎉
 

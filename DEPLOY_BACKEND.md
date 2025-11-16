@@ -57,14 +57,14 @@ const DEFAULT_API_BASE = 'https://your-app-name.up.railway.app';
 
 Or use the URL parameter:
 ```
-https://ranbirsinghlive.github.io/homeboard/?api=https://your-app-name.up.railway.app
+https://your-app-name.up.railway.app
 ```
 
 ## Step 6: Test
 
 1. Visit your Railway URL: `https://your-app-name.up.railway.app/api/health`
 2. You should see: `{"status":"healthy","timestamp":"..."}`
-3. Visit your GitHub Pages site with the API parameter
+3. Visit your Railway URL: `https://your-app-name.up.railway.app`
 4. The dashboard should load data!
 
 ## Troubleshooting
