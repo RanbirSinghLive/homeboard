@@ -716,6 +716,11 @@ def index():
     logger.info("Serving index.html")
     return send_from_directory(os.path.dirname(__file__), 'index.html')
 
+@app.route('/manifest.json')
+def manifest():
+    """Serve the web app manifest"""
+    return send_from_directory(os.path.dirname(__file__), 'manifest.json', mimetype='application/json')
+
 
 if __name__ == '__main__':
     logger.info("Starting Home Departure Board API server")
