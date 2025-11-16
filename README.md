@@ -6,8 +6,7 @@ A wall-mounted or tablet-displayed web dashboard that shows everything needed to
 
 - **Real-time Transit Departures** - STM bus and metro departures
 - **BIXI Station Status** - Bike and dock availability
-- **Weather Overview** - Temperature, conditions, wind, precipitation
-- **Air Quality (AQI)** - Current air quality index
+- **Weather Overview** - Temperature, conditions, wind, precipitation, humidity, and air quality (AQI)
 - **Sunrise/Sunset Times** - Daily sunrise and sunset
 
 ## Quick Start
@@ -127,8 +126,8 @@ The backend provides the following endpoints:
 - `GET /api/dashboard` - Get all dashboard data (recommended)
 - `GET /api/transit` - Get transit departures
 - `GET /api/bixi` - Get BIXI station status
-- `GET /api/weather` - Get weather data
-- `GET /api/aqi` - Get air quality data
+- `GET /api/weather` - Get weather data (includes AQI)
+- `GET /api/aqi` - Get air quality data (standalone endpoint)
 - `GET /api/sunrise-sunset` - Get sunrise/sunset times
 - `GET /api/health` - Health check
 

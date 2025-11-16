@@ -11,8 +11,7 @@ It consolidates:
 
 - Real-time transit departures (STM buses / Métro)
 - BIXI bike availability
-- Local weather
-- Air quality (AQI)
+- Local weather (including air quality)
 - Sunrise/sunset time
 
 The board is a **lightweight client-side web app** powered by a **simple backend** that fetches data from public real-time feeds.
@@ -68,14 +67,11 @@ Provide all necessary “leave-the-house” information at a glance to minimize 
 - Condition (rain/snow/sun)
 - Wind speed + direction
 - Precipitation probability
-- Source: Open-Meteo or Environment Canada
+- Humidity
+- Air Quality (AQI) - Current AQI value and category
+- Source: Open-Meteo
 
-### 5.4 Air Quality (AQI)
-- Current AQI value
-- Category label (Good, Moderate, etc.)
-- Source: Open-Meteo or Canadian AQHI
-
-### 5.5 Sunrise / Sunset
+### 5.4 Sunrise / Sunset
 - Today's sunrise time
 - Today's sunset time
 
@@ -89,8 +85,7 @@ Provide all necessary “leave-the-house” information at a glance to minimize 
         |
         +--> STM GTFS-Realtime
         +--> BIXI GBFS
-        +--> Weather API
-        +--> AQI API
+        +--> Weather API (includes AQI)
 ```
 
 ### 6.1 Front-End
@@ -136,7 +131,7 @@ Front-End:
 
 Backend:
 - Python Flask  
-- Fetch and transform STM/BIXI/Weather/AQI  
+- Fetch and transform STM/BIXI/Weather (includes AQI)  
 
 ## 11. Future Enhancements
 

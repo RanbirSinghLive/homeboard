@@ -222,31 +222,25 @@
             color: #fff;
         }
 
-        .aqi-display {
-            text-align: center;
-            padding: 20px;
-        }
-
-        .aqi-value {
-            font-size: 4rem;
+        .aqi-value-inline {
             font-weight: 700;
-            margin-bottom: 10px;
+            margin-right: 8px;
         }
 
-        .aqi-value.good {
+        .aqi-value-inline.good {
             color: #00ff88;
         }
 
-        .aqi-value.moderate {
+        .aqi-value-inline.moderate {
             color: #ffaa00;
         }
 
-        .aqi-value.unhealthy {
+        .aqi-value-inline.unhealthy {
             color: #ff4444;
         }
 
-        .aqi-category {
-            font-size: 1.2rem;
+        .aqi-category-inline {
+            font-size: 0.9rem;
             color: #aaa;
         }
 
@@ -411,6 +405,24 @@
                 return '<div class="error">Weather data unavailable</div>';
             }
 
+            // AQI display
+            let aqiDisplay = '';
+            if (weather.aqi && weather.aqi.value !== undefined) {
+                let aqiClass = 'good';
+                if (weather.aqi.value > 100) aqiClass = 'moderate';
+                if (weather.aqi.value > 150) aqiClass = 'unhealthy';
+                
+                aqiDisplay = `
+                    <div class="weather-detail">
+                        <div class="weather-detail-label">Air Quality</div>
+                        <div class="weather-detail-value">
+                            <span class="aqi-value-inline ${aqiClass}">${weather.aqi.value}</span>
+                            ${weather.aqi.category && weather.aqi.category !== 'Unknown' ? ` <span class="aqi-category-inline">${weather.aqi.category}</span>` : ''}
+                        </div>
+                    </div>
+                `;
+            }
+
             return `
                 <div class="weather-main">
                     <div class="weather-temp">${Math.round(weather.temperature)}${weather.units?.temperature || '°C'}</div>
@@ -433,24 +445,7 @@
                         <div class="weather-detail-label">Humidity</div>
                         <div class="weather-detail-value">${weather.humidity || 0}%</div>
                     </div>
-                </div>
-            `;
-        }
-
-        // Render AQI
-        function renderAQI(aqi) {
-            if (!aqi || aqi.value === undefined) {
-                return '<div class="error">AQI data unavailable</div>';
-            }
-
-            let aqiClass = 'good';
-            if (aqi.value > 100) aqiClass = 'moderate';
-            if (aqi.value > 150) aqiClass = 'unhealthy';
-
-            return `
-                <div class="aqi-display">
-                    <div class="aqi-value ${aqiClass}">${aqi.value}</div>
-                    ${aqi.category && aqi.category !== 'Unknown' ? `<div class="aqi-category">${aqi.category}</div>` : ''}
+                    ${aqiDisplay}
                 </div>
             `;
         }
@@ -506,11 +501,6 @@
                     <div class="widget">
                         <div class="widget-title">Weather</div>
                         ${renderWeather(data.weather)}
-                    </div>
-
-                    <div class="widget">
-                        <div class="widget-title">Air Quality</div>
-                        ${renderAQI(data.aqi)}
                     </div>
 
                     <div class="widget">

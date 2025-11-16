@@ -651,11 +651,14 @@ def get_dashboard():
     aqi = fetch_aqi(lat, lon)
     sunrise_sunset = calculate_sunrise_sunset(lat, lon)
     
+    # Merge AQI into weather data
+    if weather and aqi:
+        weather['aqi'] = aqi
+    
     dashboard_data = {
         'transit': {'departures': departures},
         'bixi': {'stations': bixi_stations},
         'weather': weather,
-        'aqi': aqi,
         'sunrise_sunset': sunrise_sunset,
         'last_updated': datetime.now().isoformat()
     }
