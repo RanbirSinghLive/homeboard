@@ -36,8 +36,22 @@
             color: #00ff88;
         }
 
+        .header-right {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 5px;
+        }
+
+        .current-time {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #00ff88;
+            font-variant-numeric: tabular-nums;
+        }
+
         .last-updated {
-            font-size: 1rem;
+            font-size: 0.9rem;
             color: #888;
         }
 
@@ -332,7 +346,10 @@
 <body>
     <div class="header">
         <h1>🚌 Home Departure Board</h1>
-        <div class="last-updated" id="lastUpdated">Loading...</div>
+        <div class="header-right">
+            <div class="current-time" id="currentTime">--:--:--</div>
+            <div class="last-updated" id="lastUpdated">Loading...</div>
+        </div>
     </div>
 
     <div class="dashboard" id="dashboard">
@@ -344,6 +361,21 @@
         const REFRESH_INTERVAL = 30000; // 30 seconds
 
         let refreshTimer = null;
+
+        // Update current time display
+        function updateCurrentTime() {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString('en-US', { 
+                hour12: false,
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+            const currentTimeEl = document.getElementById('currentTime');
+            if (currentTimeEl) {
+                currentTimeEl.textContent = timeString;
+            }
+        }
 
         // Format time in minutes
         function formatMinutes(minutes) {
@@ -574,6 +606,8 @@
 
         // Initialize
         console.log('Initializing Home Departure Board');
+        updateCurrentTime(); // Set initial time
+        setInterval(updateCurrentTime, 1000); // Update every second
         loadDashboard();
         startAutoRefresh();
 
