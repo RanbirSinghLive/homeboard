@@ -312,28 +312,22 @@ def fetch_stm_departures(stop_ids: List[str]) -> List[Dict]:
                         delay_seconds = None
                         is_live = False
                         
+                        # In GTFS-Realtime, presence in the feed indicates live prediction
+                        # Delay field is optional - if not present, it means on-time (delay = 0)
                         if stop_time_update.HasField('arrival'):
                             arrival_time = stop_time_update.arrival.time
-                            # In GTFS-Realtime, if delay field is present, use it
-                            # If delay is not present but time is in real-time feed, it's still a live prediction (delay = 0)
+                            is_live = True  # In real-time feed = live prediction
                             if stop_time_update.arrival.HasField('delay'):
                                 delay_seconds = stop_time_update.arrival.delay
-                                is_live = True
                             else:
-                                # Time is in real-time feed but no delay specified = on-time live prediction
-                                is_live = True
-                                delay_seconds = 0
+                                delay_seconds = 0  # No delay specified = on-time
                         elif stop_time_update.HasField('departure'):
                             arrival_time = stop_time_update.departure.time
-                            # In GTFS-Realtime, if delay field is present, use it
-                            # If delay is not present but time is in real-time feed, it's still a live prediction (delay = 0)
+                            is_live = True  # In real-time feed = live prediction
                             if stop_time_update.departure.HasField('delay'):
                                 delay_seconds = stop_time_update.departure.delay
-                                is_live = True
                             else:
-                                # Time is in real-time feed but no delay specified = on-time live prediction
-                                is_live = True
-                                delay_seconds = 0
+                                delay_seconds = 0  # No delay specified = on-time
                         
                         if arrival_time:
                             # Convert Unix timestamp to datetime
