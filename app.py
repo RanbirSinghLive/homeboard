@@ -307,15 +307,28 @@ def fetch_stm_departures(stop_ids: List[str]) -> List[Dict]:
                     
                     # Filter by requested stop IDs
                     if stop_id in stop_ids_set:
-                        # Get arrival or departure time
+                        # Get arrival or departure time (GTFS-Realtime provides live predictions)
                         arrival_time = None
+                        delay_seconds = None
+                        is_live = False
+                        
                         if stop_time_update.HasField('arrival'):
                             arrival_time = stop_time_update.arrival.time
+                            # Check if delay is provided (indicates live prediction vs scheduled)
+                            if stop_time_update.arrival.HasField('delay'):
+                                delay_seconds = stop_time_update.arrival.delay
+                                is_live = True
                         elif stop_time_update.HasField('departure'):
                             arrival_time = stop_time_update.departure.time
+                            # Check if delay is provided (indicates live prediction vs scheduled)
+                            if stop_time_update.departure.HasField('delay'):
+                                delay_seconds = stop_time_update.departure.delay
+                                is_live = True
                         
                         if arrival_time:
                             # Convert Unix timestamp to datetime
+                            # Note: In GTFS-Realtime, if delay is present, time is already the predicted time
+                            # If delay is not present, time is the scheduled time
                             arrival_dt = datetime.fromtimestamp(arrival_time)
                             
                             # Calculate minutes until arrival
@@ -396,7 +409,9 @@ def fetch_stm_departures(stop_ids: List[str]) -> List[Dict]:
                                     'arrival_minutes': minutes_until,
                                     'arrival_time': arrival_dt.strftime('%H:%M'),
                                     'scheduled_time': arrival_dt.isoformat(),
-                                    'trip_id': trip_id
+                                    'trip_id': trip_id,
+                                    'is_live': is_live,
+                                    'delay_seconds': delay_seconds
                                 })
         
         # Sort by arrival time
