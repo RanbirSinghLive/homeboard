@@ -172,26 +172,26 @@
         .transit-time {
             font-size: 1.8rem;
             font-weight: 700;
-            color: #1a1a1a;
+            color: #1a1a1a; /* Default black for scheduled */
             text-align: right;
             white-space: nowrap;
         }
 
         /* ETA color coding based on live status and delay */
         .transit-time.live-on-time {
-            color: #00cc6a; /* Green - live and on-time */
+            color: #00cc6a !important; /* Green - live and on-time */
         }
 
         .transit-time.live-late {
-            color: #f44336; /* Red - live and late */
+            color: #f44336 !important; /* Red - live and late */
         }
 
         .transit-time.live-early {
-            color: #8B4513; /* Brown - live and early */
+            color: #8B4513 !important; /* Brown - live and early */
         }
 
         .transit-time.scheduled {
-            color: #1a1a1a; /* Black - scheduled (not live) */
+            color: #1a1a1a !important; /* Black - scheduled (not live) */
         }
 
         .bixi-list {
@@ -532,7 +532,10 @@
 
         // Get ETA status class based on live status and delay
         function getEtaStatusClass(dep) {
-            if (!dep.is_live) {
+            // Handle null/undefined is_live
+            const isLive = dep.is_live === true;
+            
+            if (!isLive) {
                 return 'scheduled'; // Black - scheduled (not live)
             }
             
