@@ -200,6 +200,9 @@ CUSTOM_TERMINUS_MAP = {
     },
     '57': {
         'North': 'Charlevoix, Georges-Vanier, Atwater'
+    },
+    '174': {
+        'West': 'Air Canada'
     }
 }
 
@@ -312,22 +315,18 @@ def fetch_stm_departures(stop_ids: List[str]) -> List[Dict]:
                         delay_seconds = None
                         is_live = False
                         
-                        # In GTFS-Realtime, presence in the feed indicates live prediction
-                        # Delay field is optional - if not present, it means on-time (delay = 0)
                         if stop_time_update.HasField('arrival'):
                             arrival_time = stop_time_update.arrival.time
-                            is_live = True  # In real-time feed = live prediction
+                            # Check if delay is provided (indicates live prediction vs scheduled)
                             if stop_time_update.arrival.HasField('delay'):
                                 delay_seconds = stop_time_update.arrival.delay
-                            else:
-                                delay_seconds = 0  # No delay specified = on-time
+                                is_live = True
                         elif stop_time_update.HasField('departure'):
                             arrival_time = stop_time_update.departure.time
-                            is_live = True  # In real-time feed = live prediction
+                            # Check if delay is provided (indicates live prediction vs scheduled)
                             if stop_time_update.departure.HasField('delay'):
                                 delay_seconds = stop_time_update.departure.delay
-                            else:
-                                delay_seconds = 0  # No delay specified = on-time
+                                is_live = True
                         
                         if arrival_time:
                             # Convert Unix timestamp to datetime
@@ -404,6 +403,20 @@ def fetch_stm_departures(stop_ids: List[str]) -> List[Dict]:
                                     # Filter out everything else (South, Outbound, Inbound, etc.)
                                     if not is_allowed:
                                         logger.info(f"Filtering out route 57: direction={direction}, cardinal={cardinal_direction}, route_id={route_id}")
+                                        continue
+                                
+                                # Filter route 174 - only allow West direction (Air Canada)
+                                if route_id_str == '174':
+                                    is_allowed = False
+                                    if cardinal_direction == 'West' and direction == 'Air Canada':
+                                        is_allowed = True
+                                    elif cardinal_direction == 'West':
+                                        # Even if custom mapping fails, allow West
+                                        is_allowed = True
+                                    
+                                    # Filter out everything else (East, Outbound, Inbound, etc.)
+                                    if not is_allowed:
+                                        logger.info(f"Filtering out route 174: direction={direction}, cardinal={cardinal_direction}, route_id={route_id}")
                                         continue
                                 
                                 departures.append({

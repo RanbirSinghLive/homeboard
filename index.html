@@ -540,14 +540,14 @@
             }
             
             // Live prediction - check delay
-            const delay = dep.delay_seconds !== null && dep.delay_seconds !== undefined ? dep.delay_seconds : 0;
+            const delay = dep.delay_seconds || 0;
             
             if (delay > 60) {
                 return 'live-late'; // Red - late by more than 1 minute
             } else if (delay < -60) {
                 return 'live-early'; // Brown - early by more than 1 minute
             } else {
-                return 'live-on-time'; // Green - on-time (within ±1 minute)
+                return 'live-on-time'; // Green - on-time (within 1 minute)
             }
         }
 
@@ -692,6 +692,11 @@
                     <div class="widget">
                         <div class="widget-title">Transit Departures</div>
                         ${renderTransit(data.transit?.departures || [])}
+                    </div>
+
+                    <div class="widget">
+                        <div class="widget-title">Step 2</div>
+                        ${renderTransit(data.step2?.departures || [])}
                     </div>
 
                     <div class="widget">
