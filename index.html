@@ -177,6 +177,23 @@
             white-space: nowrap;
         }
 
+        /* ETA color coding based on live status and delay */
+        .transit-time.live-on-time {
+            color: #00cc6a; /* Green - live and on-time */
+        }
+
+        .transit-time.live-late {
+            color: #f44336; /* Red - live and late */
+        }
+
+        .transit-time.live-early {
+            color: #8B4513; /* Brown - live and early */
+        }
+
+        .transit-time.scheduled {
+            color: #1a1a1a; /* Black - scheduled (not live) */
+        }
+
         .bixi-list {
             list-style: none;
         }
@@ -513,6 +530,24 @@
             return '';
         }
 
+        // Get ETA status class based on live status and delay
+        function getEtaStatusClass(dep) {
+            if (!dep.is_live) {
+                return 'scheduled'; // Black - scheduled (not live)
+            }
+            
+            // Live prediction - check delay
+            const delay = dep.delay_seconds || 0;
+            
+            if (delay > 60) {
+                return 'live-late'; // Red - late by more than 1 minute
+            } else if (delay < -60) {
+                return 'live-early'; // Brown - early by more than 1 minute
+            } else {
+                return 'live-on-time'; // Green - on-time (within 1 minute)
+            }
+        }
+
         // Render transit departures
         function renderTransit(departures) {
             if (!departures || departures.length === 0) {
@@ -522,13 +557,14 @@
             const items = departures.map(dep => {
                 const minutes = dep.arrival_minutes || 0;
                 const urgencyClass = getUrgencyClass(minutes);
+                const etaStatusClass = getEtaStatusClass(dep);
                 return `
                     <li class="transit-item ${urgencyClass}">
                         <div class="transit-route">${getRouteBadge(dep.route_number)}</div>
                         <div class="transit-details">
                             ${dep.direction && dep.direction !== 'Unknown Direction' ? `<div class="transit-stop">${dep.direction}</div>` : ''}
                         </div>
-                        <div class="transit-time">${formatMinutes(minutes)}</div>
+                        <div class="transit-time ${etaStatusClass}">${formatMinutes(minutes)}</div>
                     </li>
                 `;
             }).join('');
