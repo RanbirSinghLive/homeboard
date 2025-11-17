@@ -536,25 +536,42 @@ def fetch_weather(lat: float, lon: float) -> Dict:
         hourly_temps = hourly.get('temperature_2m', [])
         
         if hourly_times and hourly_temps:
-            now = datetime.now()
-            # Find the temperature closest to 3 hours from now
-            target_time = now + timedelta(hours=3)
-            temp_unit = data.get('hourly_units', {}).get('temperature_2m', '°C')
+            # Get current time from API response (format: "2025-11-16T21:30")
+            current_time_str = current.get('time', '')
             
-            # Find the closest hourly forecast to 3 hours from now
-            for i, time_str in enumerate(hourly_times):
+            if current_time_str:
                 try:
-                    forecast_time = datetime.fromisoformat(time_str.replace('Z', '+00:00'))
-                    # Convert to local timezone (simplified - assumes timezone is already correct)
-                    if forecast_time >= target_time:
-                        temp_3h = hourly_temps[i] if i < len(hourly_temps) else None
-                        break
-                except (ValueError, IndexError):
-                    continue
+                    # Parse current time from API
+                    current_time = datetime.fromisoformat(current_time_str)
+                    current_hour = current_time.hour
+                    current_date = current_time.date()
+                    
+                    # Find the current hour in the hourly array
+                    current_hour_index = None
+                    for i, time_str in enumerate(hourly_times):
+                        try:
+                            forecast_time = datetime.fromisoformat(time_str)
+                            # Match hour and date
+                            if forecast_time.hour == current_hour and forecast_time.date() == current_date:
+                                current_hour_index = i
+                                break
+                        except (ValueError, IndexError):
+                            continue
+                    
+                    # If we found current hour, get temperature 3 hours ahead
+                    if current_hour_index is not None:
+                        target_index = current_hour_index + 3
+                        if target_index < len(hourly_temps):
+                            temp_3h = hourly_temps[target_index]
+                            logger.info(f"Temp in 3 hours: {temp_3h}°C (index {target_index})")
+                except (ValueError, AttributeError) as e:
+                    logger.warning(f"Error parsing current time for 3h forecast: {e}")
             
-            # If we didn't find one, use the 3rd index (approximately 3 hours)
+            # Fallback: if we couldn't find current hour, use simple index-based approach
             if temp_3h is None and len(hourly_temps) > 3:
+                # Use index 3 as fallback (approximately 3 hours from start of day)
                 temp_3h = hourly_temps[3]
+                logger.info(f"Using fallback temp in 3 hours: {temp_3h}°C (index 3)")
         
         # Map weather codes to conditions
         weather_code = current.get('weather_code', 0)
