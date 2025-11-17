@@ -790,6 +790,13 @@ def get_dashboard():
     
     # Fetch all data
     departures = fetch_stm_departures(stop_ids)
+    
+    # Fetch Step 2 departures (route 174 westbound from stop 60289)
+    step2_stop_ids = ['60289']
+    step2_departures = fetch_stm_departures(step2_stop_ids)
+    # Filter to only route 174 westbound
+    step2_departures = [d for d in step2_departures if d.get('route_number') == '174' and d.get('direction') == 'Air Canada']
+    
     bixi_stations = fetch_bixi_status(station_ids)
     weather = fetch_weather(lat, lon)
     aqi = fetch_aqi(lat, lon)
@@ -805,6 +812,7 @@ def get_dashboard():
     
     dashboard_data = {
         'transit': {'departures': departures},
+        'step2': {'departures': step2_departures},
         'bixi': {'stations': bixi_stations},
         'weather': weather,
         'last_updated': datetime.now().isoformat()
