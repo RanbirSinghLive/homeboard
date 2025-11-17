@@ -658,8 +658,8 @@
                         <div class="weather-detail-value">${weather.precipitation_probability || 0}%</div>
                     </div>
                     <div class="weather-detail">
-                        <div class="weather-detail-label">💧 Humidity</div>
-                        <div class="weather-detail-value">${weather.humidity || 0}%</div>
+                        <div class="weather-detail-label">🌡️ Temp in 3 Hours</div>
+                        <div class="weather-detail-value">${weather.temp_3h !== null && weather.temp_3h !== undefined ? Math.round(weather.temp_3h) + (weather.units?.temperature || '°C') : 'N/A'}</div>
                     </div>
                     ${aqiDisplay ? aqiDisplay.replace('Air Quality', '🌬️ Air Quality') : ''}
                     ${sunDisplay ? sunDisplay.replace('Sunrise / Sunset', '🌅 Sunrise / Sunset') : ''}

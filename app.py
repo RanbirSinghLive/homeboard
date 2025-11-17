@@ -519,6 +519,7 @@ def fetch_weather(lat: float, lon: float) -> Dict:
             'latitude': lat,
             'longitude': lon,
             'current': 'temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,wind_direction_10m,precipitation_probability',
+            'hourly': 'temperature_2m',
             'timezone': 'America/Montreal',
             'forecast_days': 1
         }
@@ -527,6 +528,33 @@ def fetch_weather(lat: float, lon: float) -> Dict:
         data = response.json()
         
         current = data.get('current', {})
+        
+        # Get temperature 3 hours from now
+        temp_3h = None
+        hourly = data.get('hourly', {})
+        hourly_times = hourly.get('time', [])
+        hourly_temps = hourly.get('temperature_2m', [])
+        
+        if hourly_times and hourly_temps:
+            now = datetime.now()
+            # Find the temperature closest to 3 hours from now
+            target_time = now + timedelta(hours=3)
+            temp_unit = data.get('hourly_units', {}).get('temperature_2m', '°C')
+            
+            # Find the closest hourly forecast to 3 hours from now
+            for i, time_str in enumerate(hourly_times):
+                try:
+                    forecast_time = datetime.fromisoformat(time_str.replace('Z', '+00:00'))
+                    # Convert to local timezone (simplified - assumes timezone is already correct)
+                    if forecast_time >= target_time:
+                        temp_3h = hourly_temps[i] if i < len(hourly_temps) else None
+                        break
+                except (ValueError, IndexError):
+                    continue
+            
+            # If we didn't find one, use the 3rd index (approximately 3 hours)
+            if temp_3h is None and len(hourly_temps) > 3:
+                temp_3h = hourly_temps[3]
         
         # Map weather codes to conditions
         weather_code = current.get('weather_code', 0)
@@ -551,7 +579,7 @@ def fetch_weather(lat: float, lon: float) -> Dict:
             'wind_speed': current.get('wind_speed_10m', 0),
             'wind_direction': current.get('wind_direction_10m', 0),
             'precipitation_probability': current.get('precipitation_probability', 0),
-            'humidity': current.get('relative_humidity_2m', 0),
+            'temp_3h': temp_3h,
             'units': {
                 'temperature': data.get('current_units', {}).get('temperature_2m', '°C'),
                 'wind_speed': data.get('current_units', {}).get('wind_speed_10m', 'km/h')
