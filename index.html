@@ -695,11 +695,6 @@
                     </div>
 
                     <div class="widget">
-                        <div class="widget-title">Step 2</div>
-                        ${renderTransit(data.step2?.departures || [])}
-                    </div>
-
-                    <div class="widget">
                         <div class="widget-title">BIXI Stations</div>
                         ${renderBixi(data.bixi?.stations || [])}
                     </div>
@@ -707,6 +702,11 @@
                     <div class="widget">
                         <div class="widget-title">Weather</div>
                         ${renderWeather(data.weather)}
+                    </div>
+
+                    <div class="widget">
+                        <div class="widget-title">Step 2</div>
+                        ${renderTransit(data.step2?.departures || [])}
                     </div>
                 `;
 
