@@ -314,26 +314,26 @@ def fetch_stm_departures(stop_ids: List[str]) -> List[Dict]:
                         
                         if stop_time_update.HasField('arrival'):
                             arrival_time = stop_time_update.arrival.time
-                            # Check if delay is provided (indicates live prediction vs scheduled)
+                            # In GTFS-Realtime, if delay field is present, use it
+                            # If delay is not present but time is in real-time feed, it's still a live prediction (delay = 0)
                             if stop_time_update.arrival.HasField('delay'):
                                 delay_seconds = stop_time_update.arrival.delay
                                 is_live = True
                             else:
-                                # STM GTFS-Realtime feed provides predicted times even without delay field
-                                # If time is present in real-time feed, consider it a live prediction
+                                # Time is in real-time feed but no delay specified = on-time live prediction
                                 is_live = True
-                                delay_seconds = 0  # Assume on-time if no delay specified
+                                delay_seconds = 0
                         elif stop_time_update.HasField('departure'):
                             arrival_time = stop_time_update.departure.time
-                            # Check if delay is provided (indicates live prediction vs scheduled)
+                            # In GTFS-Realtime, if delay field is present, use it
+                            # If delay is not present but time is in real-time feed, it's still a live prediction (delay = 0)
                             if stop_time_update.departure.HasField('delay'):
                                 delay_seconds = stop_time_update.departure.delay
                                 is_live = True
                             else:
-                                # STM GTFS-Realtime feed provides predicted times even without delay field
-                                # If time is present in real-time feed, consider it a live prediction
+                                # Time is in real-time feed but no delay specified = on-time live prediction
                                 is_live = True
-                                delay_seconds = 0  # Assume on-time if no delay specified
+                                delay_seconds = 0
                         
                         if arrival_time:
                             # Convert Unix timestamp to datetime
