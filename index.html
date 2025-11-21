@@ -489,8 +489,11 @@
         const API_BASE = urlParams.get('api') || DEFAULT_API_BASE || window.location.origin;
         
         const REFRESH_INTERVAL = 30000; // 30 seconds
+        const CACHE_KEY = 'dashboard_cache';
+        const CACHE_TTL = 25000; // 25 seconds (slightly less than refresh interval)
 
         let refreshTimer = null;
+        let cachedData = null;
 
         // Update current time display
         function updateCurrentTime() {
@@ -668,10 +671,83 @@
             `;
         }
 
+        // Load cached data from localStorage
+        function loadCachedData() {
+            try {
+                const cached = localStorage.getItem(CACHE_KEY);
+                if (cached) {
+                    const { data, timestamp } = JSON.parse(cached);
+                    const age = Date.now() - timestamp;
+                    if (age < CACHE_TTL) {
+                        console.log(`Using cached data (${Math.round(age / 1000)}s old)`);
+                        return data;
+                    }
+                }
+            } catch (e) {
+                console.warn('Error loading cache:', e);
+            }
+            return null;
+        }
+
+        // Save data to localStorage cache
+        function saveCachedData(data) {
+            try {
+                localStorage.setItem(CACHE_KEY, JSON.stringify({
+                    data: data,
+                    timestamp: Date.now()
+                }));
+            } catch (e) {
+                console.warn('Error saving cache:', e);
+            }
+        }
+
+        // Render dashboard from data
+        function renderDashboard(data) {
+            const dashboard = document.getElementById('dashboard');
+            const lastUpdated = document.getElementById('lastUpdated');
+
+            // Update last updated time
+            const now = new Date();
+            lastUpdated.textContent = `Last updated: ${now.toLocaleTimeString()}`;
+
+            // Render all widgets
+            dashboard.innerHTML = `
+                <div class="widget">
+                    <div class="widget-title">Transit Departures</div>
+                    ${renderTransit(data.transit?.departures || [])}
+                </div>
+
+                <div class="widget">
+                    <div class="widget-title">BIXI Stations</div>
+                    ${renderBixi(data.bixi?.stations || [])}
+                </div>
+
+                <div class="widget">
+                    <div class="widget-title">Weather</div>
+                    ${renderWeather(data.weather)}
+                </div>
+
+                <div class="widget">
+                    <div class="widget-title">Step 2</div>
+                    ${renderTransit(data.step2?.departures || [])}
+                </div>
+            `;
+        }
+
         // Fetch and render dashboard
-        async function loadDashboard() {
+        async function loadDashboard(useCache = true) {
+            // Show cached data immediately if available
+            if (useCache) {
+                const cached = loadCachedData();
+                if (cached) {
+                    cachedData = cached;
+                    renderDashboard(cached);
+                }
+            }
+
             try {
                 console.log('Fetching dashboard data from', `${API_BASE}/api/dashboard`);
+                const startTime = performance.now();
                 const response = await fetch(`${API_BASE}/api/dashboard`);
                 
                 if (!response.ok) {
@@ -679,47 +755,32 @@
                 }
                 
                 const data = await response.json();
-                console.log('Dashboard data received:', data);
+                const fetchTime = ((performance.now() - startTime) / 1000).toFixed(2);
+                console.log(`Dashboard data received in ${fetchTime}s:`, data);
 
-                const dashboard = document.getElementById('dashboard');
-                const lastUpdated = document.getElementById('lastUpdated');
+                // Save to cache
+                saveCachedData(data);
+                cachedData = data;
 
-                // Update last updated time
-                const now = new Date();
-                lastUpdated.textContent = `Last updated: ${now.toLocaleTimeString()}`;
-
-                // Render all widgets
-                dashboard.innerHTML = `
-                    <div class="widget">
-                        <div class="widget-title">Transit Departures</div>
-                        ${renderTransit(data.transit?.departures || [])}
-                    </div>
-
-                    <div class="widget">
-                        <div class="widget-title">BIXI Stations</div>
-                        ${renderBixi(data.bixi?.stations || [])}
-                    </div>
-
-                    <div class="widget">
-                        <div class="widget-title">Weather</div>
-                        ${renderWeather(data.weather)}
-                    </div>
-
-                    <div class="widget">
-                        <div class="widget-title">Step 2</div>
-                        ${renderTransit(data.step2?.departures || [])}
-                    </div>
-                `;
+                // Render fresh data
+                renderDashboard(data);
 
                 console.log('Dashboard rendered successfully');
             } catch (error) {
                 console.error('Error loading dashboard:', error);
+                
+                // If we have cached data, keep showing it
+                if (cachedData) {
+                    console.log('Using cached data due to error');
+                    return;
+                }
+                
                 const dashboard = document.getElementById('dashboard');
                 dashboard.innerHTML = `
                     <div class="error" style="grid-column: 1 / -1;">
                         Error loading dashboard: ${error.message}
                         <br><br>
-                        Make sure the backend server is running on port 5000.
+                        Make sure the backend server is running.
                     </div>
                 `;
             }

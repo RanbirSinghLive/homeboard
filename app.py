@@ -9,11 +9,14 @@ import logging
 from datetime import datetime, timedelta
 from flask import Flask, jsonify, send_from_directory
 from flask_cors import CORS
+from flask_compress import Compress
 import requests
 from typing import Dict, List, Optional
+from concurrent.futures import ThreadPoolExecutor
 import zipfile
 import io
 import csv
+import threading
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -29,6 +32,7 @@ except ImportError:
 
 app = Flask(__name__)
 CORS(app)
+Compress(app)  # Enable response compression
 
 # Load configuration
 def load_config():
@@ -187,6 +191,33 @@ def load_gtfs_trip_headsigns():
 
 # Load GTFS data on startup
 load_gtfs_trip_headsigns()
+
+# Response cache with TTL
+_cache = {}
+_cache_lock = threading.Lock()
+CACHE_TTL_TRANSIT = timedelta(seconds=30)  # 30 seconds for transit (real-time data)
+CACHE_TTL_WEATHER = timedelta(minutes=5)   # 5 minutes for weather (changes slowly)
+CACHE_TTL_BIXI = timedelta(seconds=60)     # 1 minute for BIXI (changes moderately)
+
+def get_cached(key: str, ttl: timedelta) -> Optional[Dict]:
+    """Get cached data if it exists and is not expired"""
+    with _cache_lock:
+        if key in _cache:
+            data, timestamp = _cache[key]
+            if datetime.now() - timestamp < ttl:
+                logger.debug(f"Cache HIT for {key}")
+                return data
+            else:
+                logger.debug(f"Cache EXPIRED for {key}")
+                del _cache[key]
+        logger.debug(f"Cache MISS for {key}")
+        return None
+
+def set_cached(key: str, data: Dict):
+    """Store data in cache with current timestamp"""
+    with _cache_lock:
+        _cache[key] = (data, datetime.now())
+        logger.debug(f"Cached {key}")
 
 # Custom terminus mappings by route and direction
 CUSTOM_TERMINUS_MAP = {
@@ -731,8 +762,16 @@ def get_transit():
     """Get STM transit departures"""
     logger.info("GET /api/transit")
     stop_ids = CONFIG.get('transit', {}).get('stop_ids', [])
+    cache_key = f"transit_{','.join(sorted(stop_ids))}"
+    
+    cached = get_cached(cache_key, CACHE_TTL_TRANSIT)
+    if cached:
+        return jsonify(cached)
+    
     departures = fetch_stm_departures(stop_ids)
-    return jsonify({'departures': departures})
+    result = {'departures': departures}
+    set_cached(cache_key, result)
+    return jsonify(result)
 
 
 @app.route('/api/bixi', methods=['GET'])
@@ -740,8 +779,16 @@ def get_bixi():
     """Get BIXI station status"""
     logger.info("GET /api/bixi")
     station_ids = CONFIG.get('bixi', {}).get('station_ids', [])
+    cache_key = f"bixi_{','.join(sorted(station_ids))}"
+    
+    cached = get_cached(cache_key, CACHE_TTL_BIXI)
+    if cached:
+        return jsonify(cached)
+    
     stations = fetch_bixi_status(station_ids)
-    return jsonify({'stations': stations})
+    result = {'stations': stations}
+    set_cached(cache_key, result)
+    return jsonify(result)
 
 
 @app.route('/api/weather', methods=['GET'])
@@ -751,7 +798,14 @@ def get_weather():
     location = CONFIG.get('location', {})
     lat = location.get('lat', 45.5017)
     lon = location.get('lon', -73.5673)
+    cache_key = f"weather_{lat}_{lon}"
+    
+    cached = get_cached(cache_key, CACHE_TTL_WEATHER)
+    if cached:
+        return jsonify(cached)
+    
     weather = fetch_weather(lat, lon)
+    set_cached(cache_key, weather)
     return jsonify(weather)
 
 
@@ -779,7 +833,8 @@ def get_sunrise_sunset():
 
 @app.route('/api/dashboard', methods=['GET'])
 def get_dashboard():
-    """Get all dashboard data in one request"""
+    """Get all dashboard data in one request - optimized with parallel fetching and caching"""
+    start_time = datetime.now()
     logger.info("GET /api/dashboard - Aggregating all data")
     
     location = CONFIG.get('location', {})
@@ -788,19 +843,37 @@ def get_dashboard():
     stop_ids = CONFIG.get('transit', {}).get('stop_ids', [])
     station_ids = CONFIG.get('bixi', {}).get('station_ids', [])
     
-    # Fetch all data
-    departures = fetch_stm_departures(stop_ids)
+    # Check cache first
+    cache_key = f"dashboard_{lat}_{lon}_{','.join(sorted(stop_ids))}_{','.join(sorted(station_ids))}"
+    cached_data = get_cached(cache_key, CACHE_TTL_TRANSIT)
+    if cached_data:
+        elapsed = (datetime.now() - start_time).total_seconds()
+        logger.info(f"Returning cached dashboard data (saved {elapsed:.2f}s)")
+        return jsonify(cached_data)
     
-    # Fetch Step 2 departures (route 174 westbound from stop 60289)
+    # Fetch all data in parallel using ThreadPoolExecutor
+    logger.info("Fetching data in parallel...")
     step2_stop_ids = ['60289']
-    step2_departures = fetch_stm_departures(step2_stop_ids)
-    # Filter to only route 174 westbound
-    step2_departures = [d for d in step2_departures if d.get('route_number') == '174' and d.get('direction') == 'Air Canada']
     
-    bixi_stations = fetch_bixi_status(station_ids)
-    weather = fetch_weather(lat, lon)
-    aqi = fetch_aqi(lat, lon)
-    sunrise_sunset = calculate_sunrise_sunset(lat, lon)
+    with ThreadPoolExecutor(max_workers=6) as executor:
+        # Submit all API calls in parallel
+        main_transit_future = executor.submit(fetch_stm_departures, stop_ids)
+        step2_transit_future = executor.submit(fetch_stm_departures, step2_stop_ids)
+        bixi_future = executor.submit(fetch_bixi_status, station_ids)
+        weather_future = executor.submit(fetch_weather, lat, lon)
+        aqi_future = executor.submit(fetch_aqi, lat, lon)
+        sunrise_future = executor.submit(calculate_sunrise_sunset, lat, lon)
+        
+        # Wait for all to complete and collect results
+        departures = main_transit_future.result()
+        step2_departures = step2_transit_future.result()
+        bixi_stations = bixi_future.result()
+        weather = weather_future.result()
+        aqi = aqi_future.result()
+        sunrise_sunset = sunrise_future.result()
+    
+    # Filter step2 to only route 174 westbound
+    step2_departures = [d for d in step2_departures if d.get('route_number') == '174' and d.get('direction') == 'Air Canada']
     
     # Merge AQI and sunrise/sunset into weather data
     if weather:
@@ -818,7 +891,11 @@ def get_dashboard():
         'last_updated': datetime.now().isoformat()
     }
     
-    logger.info("Dashboard data aggregated successfully")
+    # Cache the result
+    set_cached(cache_key, dashboard_data)
+    
+    elapsed = (datetime.now() - start_time).total_seconds()
+    logger.info(f"Dashboard data aggregated successfully in {elapsed:.2f}s")
     return jsonify(dashboard_data)
 
 
