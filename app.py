@@ -857,11 +857,15 @@ def get_dashboard():
                   (d.get('route_number') == '57' and d.get('direction') in ['North', 'Charlevoix, Georges-Vanier, Atwater'])]
 
     # Filter step2 to only route 174 westbound
+    logger.info(f"Step2 before filter: {len(step2_departures)} departures - routes: {[(d.get('route_number'), d.get('direction')) for d in step2_departures[:5]]}")
     step2_departures = [d for d in step2_departures if d.get('route_number') == '174' and d.get('direction') == 'Air Canada']
+    logger.info(f"Step2 after filter: {len(step2_departures)} departures")
 
     # Filter work_home_bus1 to only 174 westbound (Air Canada direction)
+    logger.info(f"Work Home Bus1 before filter: {len(work_home_bus1)} departures - routes: {[(d.get('route_number'), d.get('direction')) for d in work_home_bus1[:5]]}")
     work_home_bus1 = [d for d in work_home_bus1 if d.get('route_number') == '174' and
                       d.get('direction') in ['West', 'Air Canada']]
+    logger.info(f"Work Home Bus1 after filter: {len(work_home_bus1)} departures")
 
     # Filter work_home_bus2 to only 57 southbound
     work_home_bus2 = [d for d in work_home_bus2 if d.get('route_number') == '57' and
