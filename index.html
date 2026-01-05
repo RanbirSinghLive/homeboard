@@ -846,7 +846,8 @@
                 </div>
             `;
 
-            // Render Work → Home tab
+            // Render Work → Home tab (reverse BIXI station order)
+            const bixiStationsReversed = [...(data.bixi?.stations || [])].reverse();
             dashboardWorkHome.innerHTML = `
                 <div class="widget">
                     <div class="widget-title">Bus 1 (174 Air Canada)</div>
@@ -860,7 +861,7 @@
 
                 <div class="widget">
                     <div class="widget-title">BIXI Stations</div>
-                    ${renderBixi(data.bixi?.stations || [])}
+                    ${renderBixi(bixiStationsReversed)}
                 </div>
 
                 <div class="widget">
