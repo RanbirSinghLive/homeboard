@@ -418,38 +418,10 @@ def fetch_stm_departures(stop_ids: List[str]) -> List[Dict]:
                                     else:
                                         direction = None  # Don't show "Unknown"
                                 
-                                # Filter out route 57 South (Near Costco direction)
-                                # Only allow route 57 North (Charlevoix, Georges-Vanier, Atwater)
-                                # Handle both string and int route_id
+                                # Note: Direction filtering is now handled at the dashboard level
+                                # to allow different stops to show different directions
                                 route_id_str = str(route_id).strip()
-                                if route_id_str == '57':
-                                    # Only allow if it's North direction with our custom terminus
-                                    is_allowed = False
-                                    if cardinal_direction == 'North' and direction == 'Charlevoix, Georges-Vanier, Atwater':
-                                        is_allowed = True
-                                    elif cardinal_direction == 'North':
-                                        # Even if custom mapping fails, allow North
-                                        is_allowed = True
-                                    
-                                    # Filter out everything else (South, Outbound, Inbound, etc.)
-                                    if not is_allowed:
-                                        logger.info(f"Filtering out route 57: direction={direction}, cardinal={cardinal_direction}, route_id={route_id}")
-                                        continue
-                                
-                                # Filter route 174 - only allow West direction (Air Canada)
-                                if route_id_str == '174':
-                                    is_allowed = False
-                                    if cardinal_direction == 'West' and direction == 'Air Canada':
-                                        is_allowed = True
-                                    elif cardinal_direction == 'West':
-                                        # Even if custom mapping fails, allow West
-                                        is_allowed = True
-                                    
-                                    # Filter out everything else (East, Outbound, Inbound, etc.)
-                                    if not is_allowed:
-                                        logger.info(f"Filtering out route 174: direction={direction}, cardinal={cardinal_direction}, route_id={route_id}")
-                                        continue
-                                
+
                                 departures.append({
                                     'route_number': route_id,
                                     'direction': direction,
@@ -459,7 +431,8 @@ def fetch_stm_departures(stop_ids: List[str]) -> List[Dict]:
                                     'scheduled_time': arrival_dt.isoformat(),
                                     'trip_id': trip_id,
                                     'is_live': is_live,
-                                    'delay_seconds': delay_seconds
+                                    'delay_seconds': delay_seconds,
+                                    'stop_id': stop_id
                                 })
         
         # Sort by arrival time
@@ -854,27 +827,56 @@ def get_dashboard():
     # Fetch all data in parallel using ThreadPoolExecutor
     logger.info("Fetching data in parallel...")
     step2_stop_ids = ['60289']
-    
-    with ThreadPoolExecutor(max_workers=6) as executor:
+    # Work → Home stops
+    work_home_bus1_stops = ['57584']  # 174 Air Canada
+    work_home_bus2_stops = ['62227', '53699']  # 57 Southbound: Georges-Vanier / Saint-Antoine + Station Charlevoix
+
+    with ThreadPoolExecutor(max_workers=8) as executor:
         # Submit all API calls in parallel
         main_transit_future = executor.submit(fetch_stm_departures, stop_ids)
         step2_transit_future = executor.submit(fetch_stm_departures, step2_stop_ids)
+        work_home_bus1_future = executor.submit(fetch_stm_departures, work_home_bus1_stops)
+        work_home_bus2_future = executor.submit(fetch_stm_departures, work_home_bus2_stops)
         bixi_future = executor.submit(fetch_bixi_status, station_ids)
         weather_future = executor.submit(fetch_weather, lat, lon)
         aqi_future = executor.submit(fetch_aqi, lat, lon)
         sunrise_future = executor.submit(calculate_sunrise_sunset, lat, lon)
-        
+
         # Wait for all to complete and collect results
         departures = main_transit_future.result()
         step2_departures = step2_transit_future.result()
+        work_home_bus1 = work_home_bus1_future.result()
+        work_home_bus2 = work_home_bus2_future.result()
         bixi_stations = bixi_future.result()
         weather = weather_future.result()
         aqi = aqi_future.result()
         sunrise_sunset = sunrise_future.result()
-    
+
+    # Filter main transit (Home → Work) - route 57 northbound only
+    departures = [d for d in departures if d.get('route_number') != '57' or
+                  (d.get('route_number') == '57' and d.get('direction') in ['North', 'Charlevoix, Georges-Vanier, Atwater'])]
+
     # Filter step2 to only route 174 westbound
     step2_departures = [d for d in step2_departures if d.get('route_number') == '174' and d.get('direction') == 'Air Canada']
-    
+
+    # Filter work_home_bus1 to only 174 westbound (Air Canada direction)
+    work_home_bus1 = [d for d in work_home_bus1 if d.get('route_number') == '174' and
+                      d.get('direction') in ['West', 'Air Canada']]
+
+    # Filter work_home_bus2 to only 57 southbound
+    work_home_bus2 = [d for d in work_home_bus2 if d.get('route_number') == '57' and
+                      d.get('direction') in ['South', 'Guy Concordia', "De L'Eglise"]]
+
+    # Add stop name tags for disambiguation
+    stop_name_map = {
+        '62227': 'Dep:Georges-Vanier',
+        '53699': 'Dep:Charlevoix'
+    }
+    for dep in work_home_bus2:
+        stop_id = dep.get('stop_id', '')
+        if stop_id in stop_name_map:
+            dep['stop_name'] = stop_name_map[stop_id]
+
     # Merge AQI and sunrise/sunset into weather data
     if weather:
         if aqi:
@@ -882,10 +884,14 @@ def get_dashboard():
         if sunrise_sunset:
             weather['sunrise'] = sunrise_sunset.get('sunrise', 'N/A')
             weather['sunset'] = sunrise_sunset.get('sunset', 'N/A')
-    
+
     dashboard_data = {
         'transit': {'departures': departures},
         'step2': {'departures': step2_departures},
+        'workHome': {
+            'bus1': work_home_bus1,
+            'bus2': work_home_bus2
+        },
         'bixi': {'stations': bixi_stations},
         'weather': weather,
         'last_updated': datetime.now().isoformat()
