@@ -858,7 +858,7 @@ def get_dashboard():
 
     # Filter step2 to only route 174 westbound
     logger.info(f"Step2 before filter: {len(step2_departures)} departures - routes: {[(d.get('route_number'), d.get('direction')) for d in step2_departures[:5]]}")
-    step2_departures = [d for d in step2_departures if d.get('route_number') == '174' and d.get('direction') == 'Air Canada']
+    step2_departures = [d for d in step2_departures if d.get('route_number') == '174' and d.get('direction') in ['West', 'Air Canada']]
     logger.info(f"Step2 after filter: {len(step2_departures)} departures")
 
     # Filter work_home_bus1 to only 174 westbound (Air Canada direction)
