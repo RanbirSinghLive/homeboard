@@ -544,11 +544,33 @@ def fetch_weather(lat: float, lon: float) -> Dict:
             'timezone': 'America/Montreal',
             'forecast_days': 1
         }
+        logger.debug(f"Weather API request params: {params}")
         response = requests.get(OPEN_METEO_URL, params=params, timeout=10)
+        logger.debug(f"Weather API response status: {response.status_code}")
         response.raise_for_status()
         data = response.json()
+        logger.debug(f"Weather API response keys: {list(data.keys())}")
+        
+        # Check for error in response body (Open-Meteo sometimes returns errors in JSON)
+        if 'error' in data:
+            error_msg = data.get('error', 'Unknown error')
+            reason = data.get('reason', 'No reason provided')
+            logger.error(f"Weather API returned error in response: {error_msg} - Reason: {reason}")
+            return {}
+        
+        # Validate response structure
+        if 'current' not in data:
+            logger.error(f"Weather API response missing 'current' key. Response: {data}")
+            return {}
         
         current = data.get('current', {})
+        
+        # Validate that current has required fields
+        if not current or 'temperature_2m' not in current:
+            logger.error(f"Weather API response 'current' is empty or missing temperature_2m. Current: {current}")
+            return {}
+        
+        logger.debug(f"Weather current data keys: {list(current.keys())}")
         
         # Get temperature 3 hours from now
         temp_3h = None
@@ -624,10 +646,16 @@ def fetch_weather(lat: float, lon: float) -> Dict:
             }
         }
         
-        logger.info(f"Weather fetched: {weather['temperature']}°C, {weather['condition']}")
+        logger.info(f"Weather fetched successfully: {weather['temperature']}°C, {weather['condition']}")
         return weather
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Network error fetching weather: {e}", exc_info=True)
+        return {}
+    except KeyError as e:
+        logger.error(f"Missing key in weather API response: {e}", exc_info=True)
+        return {}
     except Exception as e:
-        logger.error(f"Error fetching weather: {e}")
+        logger.error(f"Error fetching weather: {e}", exc_info=True)
         return {}
 
 
@@ -775,10 +803,16 @@ def get_weather():
     
     cached = get_cached(cache_key, CACHE_TTL_WEATHER)
     if cached:
+        logger.debug("Returning cached weather data")
         return jsonify(cached)
     
     weather = fetch_weather(lat, lon)
-    set_cached(cache_key, weather)
+    # Only cache if we got valid weather data (not empty dict)
+    if weather and weather.get('temperature') is not None:
+        set_cached(cache_key, weather)
+        logger.info("Weather data cached successfully")
+    else:
+        logger.warning("Not caching empty/invalid weather data")
     return jsonify(weather)
 
 
@@ -879,12 +913,15 @@ def get_dashboard():
             dep['stop_name'] = stop_name_map[stop_id]
 
     # Merge AQI and sunrise/sunset into weather data
-    if weather:
+    if weather and weather.get('temperature') is not None:
         if aqi:
             weather['aqi'] = aqi
         if sunrise_sunset:
             weather['sunrise'] = sunrise_sunset.get('sunrise', 'N/A')
             weather['sunset'] = sunrise_sunset.get('sunset', 'N/A')
+        logger.info(f"Weather data included in dashboard: {weather.get('temperature')}°C")
+    else:
+        logger.warning(f"Weather data is empty or invalid, not including in dashboard. Weather: {weather}")
 
     dashboard_data = {
         'transit': {'departures': departures},
@@ -894,7 +931,7 @@ def get_dashboard():
             'bus2': work_home_bus2
         },
         'bixi': {'stations': bixi_stations},
-        'weather': weather,
+        'weather': weather if (weather and weather.get('temperature') is not None) else {},
         'last_updated': datetime.now().isoformat()
     }
     
